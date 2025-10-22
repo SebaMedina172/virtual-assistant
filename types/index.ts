@@ -4,6 +4,11 @@ export interface Message {
   role: "user" | "assistant"
   content: string
   timestamp: Date
+  metadata?: {
+    intent: "create_event" | "update_event" | "delete_event" | "list_events" | "clarify"
+    event?: CalendarEvent
+    needs_confirmation: boolean
+  }
 }
 
 // Tipos para los eventos de calendario
