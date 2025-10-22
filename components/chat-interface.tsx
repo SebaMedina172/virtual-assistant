@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
-import type { Message } from "@/types"
+import type { Message, AssistantResponse } from "@/types"
 import { MessageBubble } from "./message-bubble"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
@@ -42,18 +42,54 @@ export function ChatInterface() {
     setInput("")
     setIsLoading(true)
 
-    // TODO: Aquí irá la llamada a la API
-    // Por ahora, respuesta simulada
-    setTimeout(() => {
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: input,
+          conversationHistory: messages.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Error en la respuesta del servidor")
+      }
+
+      const data: AssistantResponse = await response.json()
+
+      console.log("[v0] Assistant response:", data)
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "Entendido. Pronto podré procesar tu solicitud cuando conectemos las APIs.",
+        content: data.response,
+        timestamp: new Date(),
+        metadata: {
+          intent: data.intent,
+          event: data.event,
+          needs_confirmation: data.needs_confirmation,
+        },
+      }
+
+      setMessages((prev) => [...prev, assistantMessage])
+    } catch (error) {
+      console.error("[v0] Error sending message:", error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Disculpá, hubo un error procesando tu mensaje. Por favor intentá de nuevo.",
         timestamp: new Date(),
       }
-      setMessages((prev) => [...prev, assistantMessage])
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
