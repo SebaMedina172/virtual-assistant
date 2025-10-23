@@ -5,29 +5,30 @@ export interface Message {
   content: string
   timestamp: Date
   metadata?: {
-    intent: "create_event" | "update_event" | "delete_event" | "list_events" | "clarify"
+    intent: "create_event" | "update_event" | "delete_event" | "list_events" | "clarify" | "general"
     event?: CalendarEvent
     needs_confirmation: boolean
   }
 }
 
-// Tipos para los eventos de calendario
 export interface CalendarEvent {
   id?: string
-  summary: string
+  title: string
   description?: string
-  start: string // ISO8601 datetime
-  end: string // ISO8601 datetime
+  location?: string
+  start_time: string // ISO8601 datetime
+  end_time: string // ISO8601 datetime
   attendees?: string[]
 }
 
 // Tipos para la respuesta del asistente
 export interface AssistantResponse {
-  intent: "create_event" | "update_event" | "delete_event" | "list_events" | "clarify"
+  intent: "create_event" | "update_event" | "delete_event" | "list_events" | "clarify" | "general"
   needs_confirmation: boolean
   missing_fields?: string[]
   event?: CalendarEvent
   response: string
+  eventCreated?: boolean
 }
 
 // Tipos para el estado de la conversación

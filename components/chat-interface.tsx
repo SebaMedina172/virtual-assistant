@@ -3,13 +3,15 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
+import { useSession, signIn, signOut } from "next-auth/react"
 import type { Message, AssistantResponse } from "@/types"
 import { MessageBubble } from "./message-bubble"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
-import { Mic, Send } from "lucide-react"
+import { Mic, Send, LogOut } from "lucide-react"
 
 export function ChatInterface() {
+  const { data: session, status } = useSession()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -21,6 +23,7 @@ export function ChatInterface() {
   ])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [pendingEvent, setPendingEvent] = useState<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll al último mensaje
@@ -63,7 +66,7 @@ export function ChatInterface() {
 
       const data: AssistantResponse = await response.json()
 
-      console.log("[v0] Assistant response:", data)
+      console.log("Assistant response:", data)
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -78,8 +81,14 @@ export function ChatInterface() {
       }
 
       setMessages((prev) => [...prev, assistantMessage])
+
+      if (data.needs_confirmation && data.event) {
+        setPendingEvent(data.event)
+      } else {
+        setPendingEvent(null)
+      }
     } catch (error) {
-      console.error("[v0] Error sending message:", error)
+      console.error("Error sending message:", error)
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -90,6 +99,69 @@ export function ChatInterface() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleConfirmEvent = async () => {
+    if (!pendingEvent) return
+
+    setIsLoading(true)
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: "confirmar",
+          conversationHistory: messages,
+          confirmEvent: pendingEvent,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Error confirmando el evento")
+      }
+
+      const data: AssistantResponse = await response.json()
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.response,
+        timestamp: new Date(),
+        metadata: {
+          intent: data.intent,
+          event: data.event,
+          needs_confirmation: false,
+        },
+      }
+
+      setMessages((prev) => [...prev, assistantMessage])
+      setPendingEvent(null)
+    } catch (error) {
+      console.error("Error confirming event:", error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Disculpá, hubo un error creando el evento. Por favor intentá de nuevo.",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCancelEvent = () => {
+    setPendingEvent(null)
+    const cancelMessage: Message = {
+      id: Date.now().toString(),
+      role: "assistant",
+      content: "Entendido, cancelé la creación del evento. ¿Hay algo más en lo que pueda ayudarte?",
+      timestamp: new Date(),
+    }
+    setMessages((prev) => [...prev, cancelMessage])
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -103,8 +175,32 @@ export function ChatInterface() {
     <div className="flex flex-col h-screen max-w-4xl mx-auto">
       {/* Header */}
       <div className="border-b bg-card px-6 py-4">
-        <h1 className="text-2xl font-semibold text-balance">Asistente Virtual de Calendario</h1>
-        <p className="text-sm text-muted-foreground mt-1">Gestioná tus eventos con lenguaje natural</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-balance">Asistente Virtual de Calendario</h1>
+            <p className="text-sm text-muted-foreground mt-1">Gestioná tus eventos con lenguaje natural</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {status === "loading" ? (
+              <div className="text-sm text-muted-foreground">Cargando...</div>
+            ) : session ? (
+              <div className="flex items-center gap-3">
+                <div className="text-sm">
+                  <div className="font-medium">{session.user?.name}</div>
+                  <div className="text-muted-foreground text-xs">{session.user?.email}</div>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => signOut()}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Desconectar
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={() => signIn("google")} size="sm">
+                Conectar Google Calendar
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Messages Area */}
@@ -130,6 +226,16 @@ export function ChatInterface() {
                 />
               </div>
             </div>
+          </div>
+        )}
+        {pendingEvent && !isLoading && (
+          <div className="flex justify-center gap-3 mb-4">
+            <Button onClick={handleConfirmEvent} size="sm">
+              Confirmar y crear evento
+            </Button>
+            <Button onClick={handleCancelEvent} variant="outline" size="sm">
+              Cancelar
+            </Button>
           </div>
         )}
         <div ref={messagesEndRef} />
