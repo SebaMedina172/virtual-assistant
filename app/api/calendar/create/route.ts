@@ -12,6 +12,13 @@ export async function POST(request: NextRequest) {
     console.log("Calendar create - Session exists:", !!session)
     console.log("Calendar create - Access token exists:", !!session?.accessToken)
 
+    if (session?.error === "RefreshAccessTokenError") {
+      return NextResponse.json(
+        { error: "Tu sesión expiró. Por favor desconectá y volvé a conectar tu cuenta de Google." },
+        { status: 401 },
+      )
+    }
+
     if (!session || !session.accessToken) {
       return NextResponse.json({ error: "No autenticado. Por favor conectá tu cuenta de Google." }, { status: 401 })
     }
@@ -26,13 +33,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No se proporcionó información del evento" }, { status: 400 })
     }
 
-    // Mapear los campos de Gemini a los campos esperados por CalendarEvent
     const calendarEvent: CalendarEvent = {
       title: event.summary || event.title,
       description: event.description || null,
       start_time: event.start || event.start_time,
       end_time: event.end || event.end_time,
       attendees: event.attendees || null,
+      color: event.color || undefined,
+      reminders: event.reminders || undefined,
+      recurrence: event.recurrence || undefined,
+      conferenceData: event.conferenceData || undefined,
     }
 
     console.log("Calendar create - Mapped event:", JSON.stringify(calendarEvent, null, 2))
@@ -55,6 +65,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "Evento creado exitosamente en tu Google Calendar",
       eventId: result.eventId,
+      meetLink: result.meetLink,
     })
   } catch (error) {
     console.error("Error in calendar create API:", error)

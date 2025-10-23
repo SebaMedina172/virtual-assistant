@@ -19,6 +19,18 @@ export interface CalendarEvent {
   start_time: string // ISO8601 datetime
   end_time: string // ISO8601 datetime
   attendees?: string[]
+  color?: string // Color name or ID (1-11)
+  reminders?: {
+    useDefault?: boolean
+    overrides?: Array<{
+      method: "email" | "popup"
+      minutes: number
+    }>
+  }
+  recurrence?: string[]
+  conferenceData?: {
+    createMeetLink?: boolean
+  }
 }
 
 // Tipos para la respuesta del asistente
