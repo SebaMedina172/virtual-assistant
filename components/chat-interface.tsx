@@ -17,7 +17,7 @@ export function ChatInterface() {
       id: "1",
       role: "assistant",
       content:
-        "Hola! Soy tu asistente virtual de calendario. Podés pedirme que cree, edite o elimine eventos. ¿En qué puedo ayudarte?",
+        "Hola! Soy tu asistente virtual de calendario. Podés crear eventos con colores, recordatorios, recurrencia y links de Meet. ¿En qué puedo ayudarte?",
       timestamp: new Date(),
     },
   ])
@@ -125,10 +125,15 @@ export function ChatInterface() {
 
       const data: AssistantResponse = await response.json()
 
+      let responseContent = data.response
+      if (data.event && (data.event as any).meetLink) {
+        responseContent += `\n\n🔗 Link de Meet: ${(data.event as any).meetLink}`
+      }
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: data.response,
+        content: responseContent,
         timestamp: new Date(),
         metadata: {
           intent: data.intent,
