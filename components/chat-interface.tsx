@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from "react"
 import { useSession, signIn, signOut } from "next-auth/react"
 import type { Message, AssistantResponse } from "@/types"
 import { MessageBubble } from "./message-bubble"
+import { EventList } from "./event-list"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Mic, Send, LogOut } from "lucide-react"
@@ -81,6 +82,22 @@ export function ChatInterface() {
       }
 
       setMessages((prev) => [...prev, assistantMessage])
+
+      if (data.intent === "list_events" && (data as any).events) {
+        const eventsMessage: Message = {
+          id: (Date.now() + 2).toString(),
+          role: "assistant",
+          content: "",
+          timestamp: new Date(),
+          metadata: {
+            intent: "list_events",
+            event: undefined,
+            needs_confirmation: false,
+            events: (data as any).events,
+          },
+        }
+        setMessages((prev) => [...prev, eventsMessage])
+      }
 
       if (data.needs_confirmation && data.event) {
         setPendingEvent(data.event)
@@ -211,7 +228,14 @@ export function ChatInterface() {
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         {messages.map((message) => (
-          <MessageBubble key={message.id} message={message} />
+          <div key={message.id}>
+            <MessageBubble message={message} />
+            {message.metadata?.intent === "list_events" && (message.metadata as any).events && (
+              <div className="mb-4">
+                <EventList events={(message.metadata as any).events} />
+              </div>
+            )}
+          </div>
         ))}
         {isLoading && (
           <div className="flex justify-start mb-4">
