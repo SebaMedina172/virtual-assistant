@@ -25,6 +25,7 @@ export function ChatInterface() {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [pendingEvent, setPendingEvent] = useState<any>(null)
+  const [pendingDelete, setPendingDelete] = useState<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll al último mensaje
@@ -97,6 +98,27 @@ export function ChatInterface() {
           },
         }
         setMessages((prev) => [...prev, eventsMessage])
+      }
+
+      if (data.intent === "delete_event" && (data as any).matchingEvents) {
+        const matchingEvents = (data as any).matchingEvents
+        if (matchingEvents.length === 1) {
+          setPendingDelete(matchingEvents[0])
+        } else if (matchingEvents.length > 1) {
+          const eventsListMessage: Message = {
+            id: (Date.now() + 2).toString(),
+            role: "assistant",
+            content: "",
+            timestamp: new Date(),
+            metadata: {
+              intent: "delete_event",
+              event: undefined,
+              needs_confirmation: false,
+              events: matchingEvents,
+            },
+          }
+          setMessages((prev) => [...prev, eventsListMessage])
+        }
       }
 
       if (data.needs_confirmation && data.event) {
@@ -186,6 +208,69 @@ export function ChatInterface() {
     setMessages((prev) => [...prev, cancelMessage])
   }
 
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return
+
+    setIsLoading(true)
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: "confirmar eliminación",
+          conversationHistory: messages,
+          confirmDelete: pendingDelete,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Error confirmando la eliminación")
+      }
+
+      const data: AssistantResponse = await response.json()
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.response,
+        timestamp: new Date(),
+        metadata: {
+          intent: data.intent,
+          event: undefined,
+          needs_confirmation: false,
+        },
+      }
+
+      setMessages((prev) => [...prev, assistantMessage])
+      setPendingDelete(null)
+    } catch (error) {
+      console.error("Error confirming delete:", error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Disculpá, hubo un error eliminando el evento. Por favor intentá de nuevo.",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCancelDelete = () => {
+    setPendingDelete(null)
+    const cancelMessage: Message = {
+      id: Date.now().toString(),
+      role: "assistant",
+      content: "Entendido, no eliminé el evento. ¿Hay algo más en lo que pueda ayudarte?",
+      timestamp: new Date(),
+    }
+    setMessages((prev) => [...prev, cancelMessage])
+  }
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -235,6 +320,17 @@ export function ChatInterface() {
                 <EventList events={(message.metadata as any).events} />
               </div>
             )}
+            {message.metadata?.intent === "delete_event" && (message.metadata as any).events && (
+              <div className="mb-4">
+                <EventList
+                  events={(message.metadata as any).events}
+                  onEventAction={(event) => {
+                    setPendingDelete(event)
+                  }}
+                  actionLabel="Eliminar este"
+                />
+              </div>
+            )}
           </div>
         ))}
         {isLoading && (
@@ -263,6 +359,16 @@ export function ChatInterface() {
               Confirmar y crear evento
             </Button>
             <Button onClick={handleCancelEvent} variant="outline" size="sm">
+              Cancelar
+            </Button>
+          </div>
+        )}
+        {pendingDelete && !isLoading && (
+          <div className="flex justify-center gap-3 mb-4">
+            <Button onClick={handleConfirmDelete} variant="destructive" size="sm">
+              Confirmar y eliminar evento
+            </Button>
+            <Button onClick={handleCancelDelete} variant="outline" size="sm">
               Cancelar
             </Button>
           </div>
