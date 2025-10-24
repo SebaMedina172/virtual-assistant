@@ -41,6 +41,13 @@ export interface AssistantResponse {
   missing_fields?: string[]
   event?: CalendarEvent
   query?: ListEventsQuery
+  deleteQuery?: DeleteEventQuery
+  matchingEvents?: Array<{
+    id: string
+    title: string
+    start: string
+    end: string
+  }>
   response: string
   eventCreated?: boolean
 }
@@ -56,4 +63,14 @@ export interface ListEventsQuery {
   startDate?: string
   endDate?: string
   maxResults?: number
+}
+
+export interface DeleteEventQuery {
+  eventId?: string
+  title?: string
+  date?: string
+  timeRange?: {
+    start: string
+    end: string
+  }
 }
