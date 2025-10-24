@@ -112,3 +112,95 @@ export async function createCalendarEvent(accessToken: string, event: CalendarEv
     throw error
   }
 }
+
+export async function listCalendarEvents(
+  accessToken: string,
+  options: {
+    startDate?: string // ISO date
+    endDate?: string // ISO date
+    maxResults?: number
+  } = {},
+) {
+  try {
+    const oauth2Client = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET)
+
+    oauth2Client.setCredentials({
+      access_token: accessToken,
+    })
+
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client })
+
+    let timeMin: string
+    let timeMax: string
+
+    if (options.startDate) {
+      // Parse the date and set to start of day in Argentina timezone
+      const startDate = new Date(options.startDate + "T00:00:00-03:00")
+      timeMin = startDate.toISOString()
+    } else {
+      // Default to start of today
+      const now = new Date()
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      timeMin = startOfDay.toISOString()
+    }
+
+    if (options.endDate) {
+      // Parse the date and set to END of day (23:59:59) in Argentina timezone
+      const endDate = new Date(options.endDate + "T23:59:59-03:00")
+      timeMax = endDate.toISOString()
+    } else {
+      // Default to end of today
+      const now = new Date()
+      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+      timeMax = endOfDay.toISOString()
+    }
+
+    console.log("Listing events - timeMin:", timeMin, "timeMax:", timeMax)
+    console.log("Listing events - maxResults:", options.maxResults || 50)
+
+    const response = await calendar.events.list({
+      calendarId: "primary",
+      timeMin,
+      timeMax,
+      maxResults: options.maxResults || 50,
+      singleEvents: true,
+      orderBy: "startTime",
+    })
+
+    const events = response.data.items || []
+
+    console.log("Found", events.length, "events")
+    console.log(
+      "Events:",
+      JSON.stringify(
+        events.map((e) => ({
+          id: e.id,
+          summary: e.summary,
+          start: e.start?.dateTime || e.start?.date,
+        })),
+        null,
+        2,
+      ),
+    )
+
+    return {
+      success: true,
+      events: events.map((event) => ({
+        id: event.id,
+        title: event.summary || "Sin título",
+        description: event.description,
+        location: event.location,
+        start: event.start?.dateTime || event.start?.date,
+        end: event.end?.dateTime || event.end?.date,
+        colorId: event.colorId,
+        htmlLink: event.htmlLink,
+        hangoutLink: event.hangoutLink,
+        attendees: event.attendees?.map((a) => a.email),
+        recurrence: event.recurrence,
+      })),
+    }
+  } catch (error) {
+    console.error("Error listing calendar events:", error)
+    throw error
+  }
+}
