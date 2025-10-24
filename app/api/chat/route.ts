@@ -123,6 +123,59 @@ Recordá: Respondé SOLO con JSON válido, sin texto adicional antes o después.
 
     console.log("Parsed response:", parsedResponse)
 
+    if (parsedResponse.intent === "list_events" && parsedResponse.query) {
+      const session = await getServerSession(authOptions)
+
+      if (!session || !session.accessToken) {
+        return NextResponse.json({
+          intent: "list_events",
+          needs_confirmation: false,
+          missing_fields: [],
+          event: null,
+          response:
+            "Para ver tus eventos necesito que conectes tu cuenta de Google. Por favor hacé clic en 'Conectar Google Calendar' en la parte superior.",
+        })
+      }
+
+      try {
+        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
+        const listResponse = await fetch(`${baseUrl}/api/calendar/list`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Cookie: request.headers.get("cookie") || "",
+          },
+          body: JSON.stringify(parsedResponse.query),
+        })
+
+        const listResult = await listResponse.json()
+
+        if (listResult.success) {
+          return NextResponse.json({
+            ...parsedResponse,
+            events: listResult.events,
+          })
+        } else {
+          return NextResponse.json({
+            intent: "list_events",
+            needs_confirmation: false,
+            missing_fields: [],
+            event: null,
+            response: `Hubo un problema obteniendo los eventos: ${listResult.error}`,
+          })
+        }
+      } catch (error) {
+        console.error("Error listing events:", error)
+        return NextResponse.json({
+          intent: "list_events",
+          needs_confirmation: false,
+          missing_fields: [],
+          event: null,
+          response: "Disculpá, hubo un error obteniendo los eventos. Por favor intentá de nuevo.",
+        })
+      }
+    }
+
     return NextResponse.json(parsedResponse)
   } catch (error) {
     console.error("Error in chat API:", error)
