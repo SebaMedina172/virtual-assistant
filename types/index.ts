@@ -8,6 +8,7 @@ export interface Message {
     intent: "create_event" | "update_event" | "delete_event" | "list_events" | "clarify" | "general"
     event?: CalendarEvent
     needs_confirmation: boolean
+    events?: any[] // array for list_events
   }
 }
 
@@ -39,6 +40,7 @@ export interface AssistantResponse {
   needs_confirmation: boolean
   missing_fields?: string[]
   event?: CalendarEvent
+  query?: ListEventsQuery
   response: string
   eventCreated?: boolean
 }
@@ -48,4 +50,10 @@ export interface ConversationState {
   messages: Message[]
   isLoading: boolean
   error?: string
+}
+
+export interface ListEventsQuery {
+  startDate?: string
+  endDate?: string
+  maxResults?: number
 }
