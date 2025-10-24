@@ -204,3 +204,100 @@ export async function listCalendarEvents(
     throw error
   }
 }
+
+export async function deleteCalendarEvent(accessToken: string, eventId: string) {
+  try {
+    const oauth2Client = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET)
+
+    oauth2Client.setCredentials({
+      access_token: accessToken,
+    })
+
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client })
+
+    console.log("Deleting event with ID:", eventId)
+
+    await calendar.events.delete({
+      calendarId: "primary",
+      eventId: eventId,
+    })
+
+    console.log("Event deleted successfully")
+
+    return {
+      success: true,
+    }
+  } catch (error) {
+    console.error("Error deleting calendar event:", error)
+    throw error
+  }
+}
+
+export async function searchEventsForDeletion(
+  accessToken: string,
+  criteria: {
+    title?: string
+    date?: string // ISO date
+    timeRange?: { start: string; end: string }
+  },
+) {
+  try {
+    const oauth2Client = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET)
+
+    oauth2Client.setCredentials({
+      access_token: accessToken,
+    })
+
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client })
+
+    let timeMin: string
+    let timeMax: string
+
+    if (criteria.date) {
+      const startDate = new Date(criteria.date + "T00:00:00-03:00")
+      const endDate = new Date(criteria.date + "T23:59:59-03:00")
+      timeMin = startDate.toISOString()
+      timeMax = endDate.toISOString()
+    } else if (criteria.timeRange) {
+      timeMin = new Date(criteria.timeRange.start).toISOString()
+      timeMax = new Date(criteria.timeRange.end).toISOString()
+    } else {
+      const now = new Date()
+      timeMin = now.toISOString()
+      const futureDate = new Date(now)
+      futureDate.setMonth(futureDate.getMonth() + 1)
+      timeMax = futureDate.toISOString()
+    }
+
+    console.log("Searching events for deletion - timeMin:", timeMin, "timeMax:", timeMax, "title:", criteria.title)
+
+    const response = await calendar.events.list({
+      calendarId: "primary",
+      timeMin,
+      timeMax,
+      maxResults: 50,
+      singleEvents: true,
+      orderBy: "startTime",
+      q: criteria.title,
+    })
+
+    const events = response.data.items || []
+
+    console.log("Found", events.length, "matching events for deletion")
+
+    return {
+      success: true,
+      events: events.map((event) => ({
+        id: event.id,
+        title: event.summary || "Sin título",
+        start: event.start?.dateTime || event.start?.date,
+        end: event.end?.dateTime || event.end?.date,
+        description: event.description,
+        location: event.location,
+      })),
+    }
+  } catch (error) {
+    console.error("Error searching events for deletion:", error)
+    throw error
+  }
+}
