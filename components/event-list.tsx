@@ -1,5 +1,8 @@
+"use client"
+
 import { Calendar, Clock, MapPin, Video, Users } from "lucide-react"
 import { Card } from "./ui/card"
+import { Button } from "./ui/button"
 
 interface Event {
   id?: string
@@ -17,6 +20,8 @@ interface Event {
 
 interface EventListProps {
   events: Event[]
+  onEventAction?: (event: Event) => void
+  actionLabel?: string
 }
 
 const COLOR_NAMES: Record<string, string> = {
@@ -65,7 +70,7 @@ function formatDate(dateString: string): string {
   })
 }
 
-export function EventList({ events }: EventListProps) {
+export function EventList({ events, onEventAction, actionLabel }: EventListProps) {
   if (events.length === 0) {
     return (
       <Card className="p-6 text-center">
@@ -170,16 +175,23 @@ export function EventList({ events }: EventListProps) {
                     {event.recurrence && <p className="text-xs text-muted-foreground mt-2 italic">Evento recurrente</p>}
                   </div>
 
-                  {event.htmlLink && (
-                    <a
-                      href={event.htmlLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline shrink-0"
-                    >
-                      Ver en Calendar
-                    </a>
-                  )}
+                  <div className="flex flex-col gap-2 shrink-0">
+                    {event.htmlLink && (
+                      <a
+                        href={event.htmlLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Ver en Calendar
+                      </a>
+                    )}
+                    {onEventAction && actionLabel && (
+                      <Button variant="destructive" size="sm" onClick={() => onEventAction(event)} className="text-xs">
+                        {actionLabel}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </Card>
             ))}
