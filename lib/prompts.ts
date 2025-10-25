@@ -50,9 +50,13 @@ PARA ELIMINAR EVENTOS:
   "missing_fields": [],
   "event": null,
   "deleteQuery": {
-    "title": string | null,
-    "date": "YYYY-MM-DD" | null,
-    "timeRange": { "start": "YYYY-MM-DDTHH:mm:ss", "end": "YYYY-MM-DDTHH:mm:ss" } | null
+    "queries": [
+      {
+        "title": string | null,
+        "date": "YYYY-MM-DD" | null,
+        "timeRange": { "start": "YYYY-MM-DDTHH:mm:ss", "end": "YYYY-MM-DDTHH:mm:ss" } | null
+      }
+    ]
   },
   "response": string
 }
@@ -71,9 +75,11 @@ Reglas importantes:
 - Si el evento no tiene hora específica, asumí horario laboral (9 AM - 6 PM)
 
 PARA ELIMINAR EVENTOS:
-- Si el usuario dice "cancela el gym de hoy" → deleteQuery con title: "gym" y date: fecha de hoy
-- Si dice "elimina la reunión de las 3pm" → deleteQuery con title: "reunión" y timeRange aproximado
-- Si dice "borra todos los eventos de mañana" → deleteQuery con date: fecha de mañana (sin title para borrar todos)
+- Si el usuario dice "cancela el gym de hoy" → deleteQuery con queries: [{ title: "gym", date: fecha de hoy }]
+- Si dice "elimina la reunión de las 3pm" → deleteQuery con queries: [{ title: "reunión", timeRange: aproximado }]
+- Si dice "borra todos los eventos de mañana" → deleteQuery con queries: [{ date: fecha de mañana }] (sin title para borrar todos)
+- **MÚLTIPLES EVENTOS**: Si dice "elimina evento A y evento B" → deleteQuery con queries: [{ title: "evento A", ... }, { title: "evento B", ... }]
+- **ACUMULAR**: Si el usuario ya pidió eliminar algo y dice "también evento X", agregá a la lista existente
 - SIEMPRE pedí confirmación antes de eliminar (needs_confirmation: true)
 - Respondé con un mensaje claro indicando qué evento(s) se van a eliminar
 
@@ -126,28 +132,36 @@ Usuario: "Cancela el gym de hoy"
   "missing_fields": [],
   "event": null,
   "deleteQuery": {
-    "title": "gym",
-    "date": "2025-10-23",
-    "timeRange": null
+    "queries": [{
+      "title": "gym",
+      "date": "2025-10-23",
+      "timeRange": null
+    }]
   },
   "response": "Entendido, voy a buscar el evento de gym para hoy y lo elimino. ¿Confirmás?"
 }
 
-Usuario: "Elimina la reunión de las 3pm"
+Usuario: "Elimina Futbol con amigos del colegio y Pasear al Oggy"
 {
   "intent": "delete_event",
   "needs_confirmation": true,
   "missing_fields": [],
   "event": null,
   "deleteQuery": {
-    "title": "reunión",
-    "date": "2025-10-23",
-    "timeRange": {
-      "start": "2025-10-23T14:00:00",
-      "end": "2025-10-23T16:00:00"
-    }
+    "queries": [
+      {
+        "title": "Futbol con amigos del colegio",
+        "date": "2025-10-23",
+        "timeRange": null
+      },
+      {
+        "title": "Pasear al Oggy",
+        "date": "2025-10-23",
+        "timeRange": null
+      }
+    ]
   },
-  "response": "Dale, busco la reunión de las 3pm de hoy para eliminarla. ¿Está bien?"
+  "response": "Dale! Voy a buscar 'Futbol con amigos del colegio' y 'Pasear al Oggy' para hoy y los elimino. ¿Confirmás?"
 }
 
 Usuario: "¿Qué tengo hoy?"
