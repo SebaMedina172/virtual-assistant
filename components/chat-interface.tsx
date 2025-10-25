@@ -25,7 +25,7 @@ export function ChatInterface() {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [pendingEvent, setPendingEvent] = useState<any>(null)
-  const [pendingDelete, setPendingDelete] = useState<any>(null)
+  const [pendingDelete, setPendingDelete] = useState<any[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll al último mensaje
@@ -102,23 +102,7 @@ export function ChatInterface() {
 
       if (data.intent === "delete_event" && (data as any).matchingEvents) {
         const matchingEvents = (data as any).matchingEvents
-        if (matchingEvents.length === 1) {
-          setPendingDelete(matchingEvents[0])
-        } else if (matchingEvents.length > 1) {
-          const eventsListMessage: Message = {
-            id: (Date.now() + 2).toString(),
-            role: "assistant",
-            content: "",
-            timestamp: new Date(),
-            metadata: {
-              intent: "delete_event",
-              event: undefined,
-              needs_confirmation: false,
-              events: matchingEvents,
-            },
-          }
-          setMessages((prev) => [...prev, eventsListMessage])
-        }
+        setPendingDelete(matchingEvents)
       }
 
       if (data.needs_confirmation && data.event) {
@@ -209,7 +193,7 @@ export function ChatInterface() {
   }
 
   const handleConfirmDelete = async () => {
-    if (!pendingDelete) return
+    if (!pendingDelete || pendingDelete.length === 0) return
 
     setIsLoading(true)
 
@@ -222,7 +206,7 @@ export function ChatInterface() {
         body: JSON.stringify({
           message: "confirmar eliminación",
           conversationHistory: messages,
-          confirmDelete: pendingDelete,
+          confirmDeleteBatch: pendingDelete,
         }),
       })
 
@@ -245,7 +229,7 @@ export function ChatInterface() {
       }
 
       setMessages((prev) => [...prev, assistantMessage])
-      setPendingDelete(null)
+      setPendingDelete([])
     } catch (error) {
       console.error("Error confirming delete:", error)
       const errorMessage: Message = {
@@ -255,13 +239,14 @@ export function ChatInterface() {
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, errorMessage])
+      setPendingDelete([])
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleCancelDelete = () => {
-    setPendingDelete(null)
+    setPendingDelete([])
     const cancelMessage: Message = {
       id: Date.now().toString(),
       role: "assistant",
@@ -269,6 +254,10 @@ export function ChatInterface() {
       timestamp: new Date(),
     }
     setMessages((prev) => [...prev, cancelMessage])
+  }
+
+  const handleRemoveFromDelete = (eventId: string) => {
+    setPendingDelete((prev) => prev.filter((e) => e.id !== eventId))
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -320,17 +309,6 @@ export function ChatInterface() {
                 <EventList events={(message.metadata as any).events} />
               </div>
             )}
-            {message.metadata?.intent === "delete_event" && (message.metadata as any).events && (
-              <div className="mb-4">
-                <EventList
-                  events={(message.metadata as any).events}
-                  onEventAction={(event) => {
-                    setPendingDelete(event)
-                  }}
-                  actionLabel="Eliminar este"
-                />
-              </div>
-            )}
           </div>
         ))}
         {isLoading && (
@@ -363,14 +341,42 @@ export function ChatInterface() {
             </Button>
           </div>
         )}
-        {pendingDelete && !isLoading && (
-          <div className="flex justify-center gap-3 mb-4">
-            <Button onClick={handleConfirmDelete} variant="destructive" size="sm">
-              Confirmar y eliminar evento
-            </Button>
-            <Button onClick={handleCancelDelete} variant="outline" size="sm">
-              Cancelar
-            </Button>
+        {pendingDelete.length > 0 && !isLoading && (
+          <div className="mb-4">
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+              <h3 className="font-semibold text-destructive mb-3">Eventos a eliminar ({pendingDelete.length}):</h3>
+              <div className="space-y-2 mb-4">
+                {pendingDelete.map((event) => (
+                  <div key={event.id} className="flex items-center justify-between bg-background rounded p-2">
+                    <div className="flex-1">
+                      <div className="font-medium">{event.title}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {new Date(event.start).toLocaleString("es-AR", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveFromDelete(event.id)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      Quitar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-center gap-3">
+                <Button onClick={handleConfirmDelete} variant="destructive" size="sm">
+                  Confirmar y eliminar {pendingDelete.length === 1 ? "evento" : "todos"}
+                </Button>
+                <Button onClick={handleCancelDelete} variant="outline" size="sm">
+                  Cancelar
+                </Button>
+              </div>
+            </div>
           </div>
         )}
         <div ref={messagesEndRef} />
