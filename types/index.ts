@@ -67,6 +67,14 @@ export interface ListEventsQuery {
 
 export interface DeleteEventQuery {
   eventId?: string
+  queries?: Array<{
+    title?: string
+    date?: string
+    timeRange?: {
+      start: string
+      end: string
+    }
+  }>
   title?: string
   date?: string
   timeRange?: {
