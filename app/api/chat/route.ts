@@ -7,10 +7,65 @@ import { SYSTEM_PROMPT, buildConversationContext } from "@/lib/prompts"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { message, conversationHistory, confirmEvent, confirmDelete } = body
+    const { message, conversationHistory, confirmEvent, confirmDelete, confirmDeleteBatch } = body
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Mensaje inválido" }, { status: 400 })
+    }
+
+    if (confirmDeleteBatch && Array.isArray(confirmDeleteBatch) && confirmDeleteBatch.length > 0) {
+      const session = await getServerSession(authOptions)
+
+      console.log("Chat - Confirming batch delete:", JSON.stringify(confirmDeleteBatch, null, 2))
+
+      if (!session || !session.accessToken) {
+        return NextResponse.json({
+          intent: "delete_event",
+          needs_confirmation: false,
+          response:
+            "Para eliminar eventos necesito que conectes tu cuenta de Google. Por favor hacé clic en 'Conectar Google Calendar' en la parte superior.",
+        })
+      }
+
+      try {
+        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
+        const deletePromises = confirmDeleteBatch.map((event) =>
+          fetch(`${baseUrl}/api/calendar/delete`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Cookie: request.headers.get("cookie") || "",
+            },
+            body: JSON.stringify({ eventId: event.id }),
+          }).then((res) => res.json()),
+        )
+
+        const results = await Promise.all(deletePromises)
+        const successCount = results.filter((r) => r.success).length
+        const failedCount = results.length - successCount
+
+        if (failedCount === 0) {
+          const eventTitles = confirmDeleteBatch.map((e) => `"${e.title}"`).join(", ")
+          return NextResponse.json({
+            intent: "delete_event",
+            needs_confirmation: false,
+            response: `Listo! ${successCount === 1 ? "El evento" : "Los eventos"} ${eventTitles} ${successCount === 1 ? "fue eliminado" : "fueron eliminados"} exitosamente de tu Google Calendar.`,
+          })
+        } else {
+          return NextResponse.json({
+            intent: "delete_event",
+            needs_confirmation: false,
+            response: `Se eliminaron ${successCount} eventos correctamente, pero hubo problemas con ${failedCount}.`,
+          })
+        }
+      } catch (error) {
+        console.error("Error batch deleting events:", error)
+        return NextResponse.json({
+          intent: "delete_event",
+          needs_confirmation: false,
+          response: "Disculpá, hubo un error eliminando los eventos. Por favor intentá de nuevo.",
+        })
+      }
     }
 
     if (confirmDelete) {
@@ -187,42 +242,41 @@ Recordá: Respondé SOLO con JSON válido, sin texto adicional antes o después.
 
       try {
         const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
-        const searchResponse = await fetch(`${baseUrl}/api/calendar/delete`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Cookie: request.headers.get("cookie") || "",
+
+        const queries = parsedResponse.deleteQuery.queries || [
+          {
+            title: parsedResponse.deleteQuery.title,
+            date: parsedResponse.deleteQuery.date,
+            timeRange: parsedResponse.deleteQuery.timeRange,
           },
-          body: JSON.stringify({ searchCriteria: parsedResponse.deleteQuery }),
-        })
+        ]
 
-        const searchResult = await searchResponse.json()
+        const searchPromises = queries.map((query: any) => 
+          fetch(`${baseUrl}/api/calendar/delete`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Cookie: request.headers.get("cookie") || "",
+            },
+            body: JSON.stringify({ searchCriteria: query }),
+          }).then((res) => res.json()),
+        )
 
-        if (searchResult.success && searchResult.events) {
-          if (searchResult.events.length === 0) {
-            return NextResponse.json({
-              intent: "delete_event",
-              needs_confirmation: false,
-              response: "No encontré ningún evento que coincida con tu búsqueda.",
-            })
-          } else if (searchResult.events.length === 1) {
-            return NextResponse.json({
-              ...parsedResponse,
-              matchingEvents: searchResult.events,
-            })
-          } else {
-            return NextResponse.json({
-              intent: "delete_event",
-              needs_confirmation: true,
-              matchingEvents: searchResult.events,
-              response: `Encontré ${searchResult.events.length} eventos que coinciden. Por favor especificá cuál querés eliminar.`,
-            })
-          }
-        } else {
+        const searchResults = await Promise.all(searchPromises)
+        const allEvents = searchResults.flatMap((result) => (result.success && result.events ? result.events : []))
+
+        if (allEvents.length === 0) {
           return NextResponse.json({
             intent: "delete_event",
             needs_confirmation: false,
-            response: `Hubo un problema buscando el evento: ${searchResult.error}`,
+            response: "No encontré ningún evento que coincida con tu búsqueda.",
+          })
+        } else {
+          return NextResponse.json({
+            intent: "delete_event",
+            needs_confirmation: true,
+            response: parsedResponse.response,
+            matchingEvents: allEvents,
           })
         }
       } catch (error) {
@@ -230,7 +284,7 @@ Recordá: Respondé SOLO con JSON válido, sin texto adicional antes o después.
         return NextResponse.json({
           intent: "delete_event",
           needs_confirmation: false,
-          response: "Disculpá, hubo un error buscando el evento. Por favor intentá de nuevo.",
+          response: "Disculpá, hubo un error buscando los eventos. Por favor intentá de nuevo.",
         })
       }
     }
