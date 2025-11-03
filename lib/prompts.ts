@@ -61,6 +61,33 @@ PARA ELIMINAR EVENTOS:
   "response": string
 }
 
+PARA EDITAR EVENTOS:
+{
+  "intent": "update_event",
+  "needs_confirmation": true,
+  "missing_fields": [],
+  "event": null,
+  "editQuery": {
+    "searchCriteria": {
+      "title": string | null,
+      "date": "YYYY-MM-DD" | null,
+      "timeRange": { "start": "YYYY-MM-DDTHH:mm:ss", "end": "YYYY-MM-DDTHH:mm:ss" } | null
+    },
+    "updates": {
+      "title": string | null,
+      "description": string | null,
+      "start_time": "YYYY-MM-DDTHH:mm:ss" | null,
+      "end_time": "YYYY-MM-DDTHH:mm:ss" | null,
+      "location": string | null,
+      "color": string | null,
+      "reminders": {...} | null,
+      "recurrence": string[] | null,
+      "conferenceData": { "createMeetLink": boolean } | null
+    }
+  },
+  "response": string
+}
+
 Reglas importantes:
 - Siempre pedí confirmación antes de crear/editar/eliminar eventos
 - Si falta información crítica (fecha, hora, título), preguntá de forma amigable
@@ -218,6 +245,45 @@ Usuario: "Hola"
   "missing_fields": [],
   "event": null,
   "response": "Hola! Soy tu asistente de calendario. Puedo ayudarte a crear eventos con colores, recordatorios, recurrencia y links de Meet. ¿Qué necesitás?"
+}
+
+Usuario: "Cambia el gym de las 5 a las 6"
+{
+  "intent": "update_event",
+  "needs_confirmation": true,
+  "missing_fields": [],
+  "event": null,
+  "editQuery": {
+    "searchCriteria": {
+      "title": "gym",
+      "date": "2025-10-23",
+      "timeRange": null
+    },
+    "updates": {
+      "start_time": "2025-10-23T18:00:00",
+      "end_time": "2025-10-23T19:00:00"
+    }
+  },
+  "response": "Entendido, voy a buscar el evento de gym para hoy y cambio el horario de 17:00 a 18:00. ¿Confirmás?"
+}
+
+Usuario: "Ponele color azul al evento de lectura"
+{
+  "intent": "update_event",
+  "needs_confirmation": true,
+  "missing_fields": [],
+  "event": null,
+  "editQuery": {
+    "searchCriteria": {
+      "title": "lectura",
+      "date": "2025-10-23",
+      "timeRange": null
+    },
+    "updates": {
+      "color": "7"
+    }
+  },
+  "response": "Dale! Voy a buscar el evento de lectura para hoy y le cambio el color a azul. ¿Confirmás?"
 }
 `
 
