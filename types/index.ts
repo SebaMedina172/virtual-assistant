@@ -42,6 +42,7 @@ export interface AssistantResponse {
   event?: CalendarEvent
   query?: ListEventsQuery
   deleteQuery?: DeleteEventQuery
+  editQuery?: EditEventQuery
   matchingEvents?: Array<{
     id: string
     title: string
@@ -81,4 +82,16 @@ export interface DeleteEventQuery {
     start: string
     end: string
   }
+}
+
+export interface EditEventQuery {
+  searchCriteria: {
+    title?: string
+    date?: string
+    timeRange?: {
+      start: string
+      end: string
+    }
+  }
+  updates: Partial<CalendarEvent>
 }
