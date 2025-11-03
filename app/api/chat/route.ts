@@ -7,7 +7,7 @@ import { SYSTEM_PROMPT, buildConversationContext } from "@/lib/prompts"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { message, conversationHistory, confirmEvent, confirmDelete, confirmDeleteBatch } = body
+    const { message, conversationHistory, confirmEvent, confirmDelete, confirmDeleteBatch, confirmEdit } = body
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Mensaje inválido" }, { status: 400 })
@@ -182,12 +182,61 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Construir el contexto de la conversación
-    const context = conversationHistory?.length
-      ? buildConversationContext(conversationHistory.slice(-5)) // Últimos 5 mensajes
-      : ""
+    if (confirmEdit) {
+      const session = await getServerSession(authOptions)
 
-    // Construir el prompt completo
+      console.log("Chat - Confirming edit:", JSON.stringify(confirmEdit, null, 2))
+
+      if (!session || !session.accessToken) {
+        return NextResponse.json({
+          intent: "update_event",
+          needs_confirmation: false,
+          response:
+            "Para editar eventos necesito que conectes tu cuenta de Google. Por favor hacé clic en 'Conectar Google Calendar' en la parte superior.",
+        })
+      }
+
+      try {
+        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
+        const updateResponse = await fetch(`${baseUrl}/api/calendar/update`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Cookie: request.headers.get("cookie") || "",
+          },
+          body: JSON.stringify({
+            eventId: confirmEdit.eventId,
+            updates: confirmEdit.updates,
+          }),
+        })
+
+        const updateResult = await updateResponse.json()
+
+        if (updateResult.success) {
+          return NextResponse.json({
+            intent: "update_event",
+            needs_confirmation: false,
+            response: `Listo! El evento "${confirmEdit.eventTitle}" fue actualizado exitosamente en tu Google Calendar.`,
+          })
+        } else {
+          return NextResponse.json({
+            intent: "update_event",
+            needs_confirmation: false,
+            response: `Hubo un problema actualizando el evento: ${updateResult.error}`,
+          })
+        }
+      } catch (error) {
+        console.error("Error updating event:", error)
+        return NextResponse.json({
+          intent: "update_event",
+          needs_confirmation: false,
+          response: "Disculpá, hubo un error actualizando el evento. Por favor intentá de nuevo.",
+        })
+      }
+    }
+
+    const context = conversationHistory?.length ? buildConversationContext(conversationHistory.slice(-5)) : ""
+
     const fullPrompt = `${SYSTEM_PROMPT}
 
 ${context ? `Contexto de la conversación anterior:\n${context}\n\n` : ""}Usuario: ${message}
@@ -283,6 +332,56 @@ Recordá: Respondé SOLO con JSON válido, sin texto adicional antes o después.
         console.error("Error searching events for deletion:", error)
         return NextResponse.json({
           intent: "delete_event",
+          needs_confirmation: false,
+          response: "Disculpá, hubo un error buscando los eventos. Por favor intentá de nuevo.",
+        })
+      }
+    }
+
+    if (parsedResponse.intent === "update_event" && parsedResponse.editQuery) {
+      const session = await getServerSession(authOptions)
+
+      if (!session || !session.accessToken) {
+        return NextResponse.json({
+          intent: "update_event",
+          needs_confirmation: false,
+          response:
+            "Para editar eventos necesito que conectes tu cuenta de Google. Por favor hacé clic en 'Conectar Google Calendar' en la parte superior.",
+        })
+      }
+
+      try {
+        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
+        const searchResponse = await fetch(`${baseUrl}/api/calendar/update`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Cookie: request.headers.get("cookie") || "",
+          },
+          body: JSON.stringify({ searchCriteria: parsedResponse.editQuery.searchCriteria }),
+        })
+
+        const searchResult = await searchResponse.json()
+
+        if (searchResult.success && searchResult.events && searchResult.events.length > 0) {
+          return NextResponse.json({
+            intent: "update_event",
+            needs_confirmation: true,
+            response: parsedResponse.response,
+            matchingEvents: searchResult.events,
+            editUpdates: parsedResponse.editQuery.updates,
+          })
+        } else {
+          return NextResponse.json({
+            intent: "update_event",
+            needs_confirmation: false,
+            response: "No encontré ningún evento que coincida con tu búsqueda.",
+          })
+        }
+      } catch (error) {
+        console.error("Error searching events for editing:", error)
+        return NextResponse.json({
+          intent: "update_event",
           needs_confirmation: false,
           response: "Disculpá, hubo un error buscando los eventos. Por favor intentá de nuevo.",
         })
