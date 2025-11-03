@@ -26,6 +26,7 @@ export function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false)
   const [pendingEvent, setPendingEvent] = useState<any>(null)
   const [pendingDelete, setPendingDelete] = useState<any[]>([])
+  const [pendingEdit, setPendingEdit] = useState<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll al último mensaje
@@ -103,6 +104,12 @@ export function ChatInterface() {
       if (data.intent === "delete_event" && (data as any).matchingEvents) {
         const matchingEvents = (data as any).matchingEvents
         setPendingDelete(matchingEvents)
+      }
+
+      if (data.intent === "update_event" && (data as any).matchingEvents) {
+        const matchingEvents = (data as any).matchingEvents
+        const editUpdates = (data as any).editUpdates
+        setPendingEdit({ events: matchingEvents, updates: editUpdates })
       }
 
       if (data.needs_confirmation && data.event) {
@@ -260,6 +267,74 @@ export function ChatInterface() {
     setPendingDelete((prev) => prev.filter((e) => e.id !== eventId))
   }
 
+  const handleConfirmEdit = async (eventId: string, eventTitle: string) => {
+    if (!pendingEdit) return
+
+    setIsLoading(true)
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: "confirmar edición",
+          conversationHistory: messages,
+          confirmEdit: {
+            eventId,
+            eventTitle,
+            updates: pendingEdit.updates,
+          },
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Error confirmando la edición")
+      }
+
+      const data: AssistantResponse = await response.json()
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.response,
+        timestamp: new Date(),
+        metadata: {
+          intent: data.intent,
+          event: undefined,
+          needs_confirmation: false,
+        },
+      }
+
+      setMessages((prev) => [...prev, assistantMessage])
+      setPendingEdit(null)
+    } catch (error) {
+      console.error("[v0] Error confirming edit:", error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Disculpá, hubo un error editando el evento. Por favor intentá de nuevo.",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+      setPendingEdit(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setPendingEdit(null)
+    const cancelMessage: Message = {
+      id: Date.now().toString(),
+      role: "assistant",
+      content: "Entendido, no edité ningún evento. ¿Hay algo más en lo que pueda ayudarte?",
+      timestamp: new Date(),
+    }
+    setMessages((prev) => [...prev, cancelMessage])
+  }
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -373,6 +448,43 @@ export function ChatInterface() {
                   Confirmar y eliminar {pendingDelete.length === 1 ? "evento" : "todos"}
                 </Button>
                 <Button onClick={handleCancelDelete} variant="outline" size="sm">
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        {pendingEdit && !isLoading && (
+          <div className="mb-4">
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+              <h3 className="font-semibold text-primary mb-3">
+                Seleccioná el evento a editar ({pendingEdit.events.length}):
+              </h3>
+              <div className="space-y-2 mb-4">
+                {pendingEdit.events.map((event: any) => (
+                  <div key={event.id} className="flex items-center justify-between bg-background rounded p-3">
+                    <div className="flex-1">
+                      <div className="font-medium">{event.title}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {new Date(event.start).toLocaleString("es-AR", {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        })}
+                      </div>
+                      {event.location && <div className="text-sm text-muted-foreground">📍 {event.location}</div>}
+                    </div>
+                    <Button
+                      onClick={() => handleConfirmEdit(event.id, event.title)}
+                      size="sm"
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      Editar este
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-center">
+                <Button onClick={handleCancelEdit} variant="outline" size="sm">
                   Cancelar
                 </Button>
               </div>
