@@ -73,9 +73,9 @@ function formatDate(dateString: string): string {
 export function EventList({ events, onEventAction, actionLabel }: EventListProps) {
   if (events.length === 0) {
     return (
-      <Card className="p-6 text-center">
-        <Calendar className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
-        <p className="text-muted-foreground">No hay eventos en este período</p>
+      <Card className="p-3 sm:p-6 text-center">
+        <Calendar className="h-8 sm:h-12 w-8 sm:w-12 mx-auto mb-2 sm:mb-3 text-muted-foreground" />
+        <p className="text-xs sm:text-base text-muted-foreground">No hay eventos en este período</p>
       </Card>
     )
   }
@@ -94,17 +94,17 @@ export function EventList({ events, onEventAction, actionLabel }: EventListProps
   )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {Object.entries(eventsByDate).map(([date, dateEvents]) => (
         <div key={date}>
-          <h3 className="font-semibold text-lg mb-3 capitalize">{date}</h3>
-          <div className="space-y-3">
+          <h3 className="font-semibold text-sm sm:text-lg mb-2 sm:mb-3 capitalize">{date}</h3>
+          <div className="space-y-2 sm:space-y-3">
             {dateEvents.map((event, index) => (
               <Card
                 key={event.id || index}
                 className={`p-4 border-l-4 ${COLOR_CLASSES[event.colorId || "7"] || "border-l-primary"}`}
               >
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-base mb-2">{event.title}</h4>
 
@@ -130,7 +130,7 @@ export function EventList({ events, onEventAction, actionLabel }: EventListProps
                             href={event.hangoutLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-primary hover:underline"
+                            className="text-primary hover:underline text-sm"
                           >
                             Google Meet
                           </a>
@@ -175,7 +175,7 @@ export function EventList({ events, onEventAction, actionLabel }: EventListProps
                     {event.recurrence && <p className="text-xs text-muted-foreground mt-2 italic">Evento recurrente</p>}
                   </div>
 
-                  <div className="flex flex-col gap-2 shrink-0">
+                  <div className="flex flex-col gap-2 shrink-0 w-full sm:w-auto">
                     {event.htmlLink && (
                       <a
                         href={event.htmlLink}
@@ -187,7 +187,7 @@ export function EventList({ events, onEventAction, actionLabel }: EventListProps
                       </a>
                     )}
                     {onEventAction && actionLabel && (
-                      <Button variant="destructive" size="sm" onClick={() => onEventAction(event)} className="text-xs">
+                      <Button variant="destructive" size="sm" onClick={() => onEventAction(event)} className="text-xs w-full sm:w-auto">
                         {actionLabel}
                       </Button>
                     )}

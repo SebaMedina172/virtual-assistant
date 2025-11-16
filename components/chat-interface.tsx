@@ -30,7 +30,6 @@ export function ChatInterface() {
   const [pendingEdit, setPendingEdit] = useState<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll al último mensaje
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
@@ -346,30 +345,40 @@ export function ChatInterface() {
   return (
     <div className="flex flex-col h-screen max-w-4xl mx-auto">
       {/* Header */}
-      <div className="border-b bg-card px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-balance">Asistente Virtual de Calendario</h1>
-            <p className="text-sm text-muted-foreground mt-1">Gestioná tus eventos con lenguaje natural</p>
+      <div className="border-b bg-card px-3 sm:px-6 py-2.5 sm:py-4">
+        <div className="flex items-center justify-between gap-2 sm:gap-4">
+          {/* Título - dos líneas en móvil pero más compacto */}
+          <div className="min-w-0 flex-1">
+            <h1 className="text-sm leading-tight sm:text-2xl font-semibold">
+              <span className="block sm:inline">Asistente Virtual</span>
+              <span className="block sm:inline sm:ml-1.5">de Calendario</span>
+            </h1>
           </div>
-          <div className="flex items-center gap-3">
+          
+          {/* Controles */}
+          <div className="flex items-center gap-2 shrink-0">
             <ThemeToggle />
             {status === "loading" ? (
-              <div className="text-sm text-muted-foreground">Cargando...</div>
+              <div className="text-xs sm:text-sm text-muted-foreground">Cargando...</div>
             ) : session ? (
-              <div className="flex items-center gap-3">
-                <div className="text-sm">
-                  <div className="font-medium">{session.user?.name}</div>
-                  <div className="text-muted-foreground text-xs">{session.user?.email}</div>
+              <div className="flex items-center gap-2">
+                <div className="text-xs sm:text-sm min-w-0 max-w-[100px] sm:max-w-none">
+                  <div className="font-medium truncate">{session.user?.name}</div>
+                  <div className="text-muted-foreground text-[10px] sm:text-xs truncate">{session.user?.email}</div>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => signOut()}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Desconectar
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => signOut()} 
+                  className="h-8 w-8 sm:h-9 sm:w-auto p-0 sm:px-4"
+                >
+                  <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Desconectar</span>
                 </Button>
               </div>
             ) : (
-              <Button onClick={() => signIn("google")} size="sm">
-                Conectar Google Calendar
+              <Button onClick={() => signIn("google")} size="sm" className="text-xs sm:text-sm px-3 sm:px-4">
+                Conectar
               </Button>
             )}
           </div>
@@ -377,20 +386,20 @@ export function ChatInterface() {
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto px-3 sm:px-6 py-3 sm:py-4 space-y-3 sm:space-y-4">
         {messages.map((message) => (
           <div key={message.id}>
             <MessageBubble message={message} />
             {message.metadata?.intent === "list_events" && (message.metadata as any).events && (
-              <div className="mb-4">
+              <div className="mb-3 sm:mb-4">
                 <EventList events={(message.metadata as any).events} />
               </div>
             )}
           </div>
         ))}
         {isLoading && (
-          <div className="flex justify-start mb-4">
-            <div className="bg-muted rounded-lg px-4 py-3">
+          <div className="flex justify-start mb-3 sm:mb-4">
+            <div className="bg-muted rounded-lg px-3 sm:px-4 py-2 sm:py-3">
               <div className="flex gap-1">
                 <span
                   className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce"
@@ -409,25 +418,25 @@ export function ChatInterface() {
           </div>
         )}
         {pendingEvent && !isLoading && (
-          <div className="flex justify-center gap-3 mb-4">
-            <Button onClick={handleConfirmEvent} size="sm">
+          <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <Button onClick={handleConfirmEvent} size="sm" className="w-full sm:w-auto">
               Confirmar y crear evento
             </Button>
-            <Button onClick={handleCancelEvent} variant="outline" size="sm">
+            <Button onClick={handleCancelEvent} variant="outline" size="sm" className="w-full sm:w-auto">
               Cancelar
             </Button>
           </div>
         )}
         {pendingDelete.length > 0 && !isLoading && (
-          <div className="mb-4">
-            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-              <h3 className="font-semibold text-destructive mb-3">Eventos a eliminar ({pendingDelete.length}):</h3>
-              <div className="space-y-2 mb-4">
+          <div className="mb-3 sm:mb-4">
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 sm:p-4">
+              <h3 className="font-semibold text-destructive mb-2 sm:mb-3 text-sm sm:text-base">Eventos a eliminar ({pendingDelete.length}):</h3>
+              <div className="space-y-2 mb-3 sm:mb-4">
                 {pendingDelete.map((event) => (
-                  <div key={event.id} className="flex items-center justify-between bg-background rounded p-2">
-                    <div className="flex-1">
-                      <div className="font-medium">{event.title}</div>
-                      <div className="text-sm text-muted-foreground">
+                  <div key={event.id} className="flex items-center justify-between bg-background rounded p-2 gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{event.title}</div>
+                      <div className="text-xs text-muted-foreground">
                         {new Date(event.start).toLocaleString("es-AR", {
                           dateStyle: "short",
                           timeStyle: "short",
@@ -438,18 +447,18 @@ export function ChatInterface() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleRemoveFromDelete(event.id)}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="text-xs text-muted-foreground hover:text-foreground shrink-0"
                     >
                       Quitar
                     </Button>
                   </div>
                 ))}
               </div>
-              <div className="flex justify-center gap-3">
-                <Button onClick={handleConfirmDelete} variant="destructive" size="sm">
+              <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-3">
+                <Button onClick={handleConfirmDelete} variant="destructive" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
                   Confirmar y eliminar {pendingDelete.length === 1 ? "evento" : "todos"}
                 </Button>
-                <Button onClick={handleCancelDelete} variant="outline" size="sm">
+                <Button onClick={handleCancelDelete} variant="outline" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
                   Cancelar
                 </Button>
               </div>
@@ -457,28 +466,28 @@ export function ChatInterface() {
           </div>
         )}
         {pendingEdit && !isLoading && (
-          <div className="mb-4">
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
-              <h3 className="font-semibold text-primary mb-3">
+          <div className="mb-3 sm:mb-4">
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 sm:p-4">
+              <h3 className="font-semibold text-primary mb-2 sm:mb-3 text-sm sm:text-base">
                 Seleccioná el evento a editar ({pendingEdit.events.length}):
               </h3>
-              <div className="space-y-2 mb-4">
+              <div className="space-y-2 mb-3 sm:mb-4">
                 {pendingEdit.events.map((event: any) => (
-                  <div key={event.id} className="flex items-center justify-between bg-background rounded p-3">
-                    <div className="flex-1">
-                      <div className="font-medium">{event.title}</div>
-                      <div className="text-sm text-muted-foreground">
+                  <div key={event.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-background rounded p-2 sm:p-3 gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm">{event.title}</div>
+                      <div className="text-xs text-muted-foreground">
                         {new Date(event.start).toLocaleString("es-AR", {
                           dateStyle: "short",
                           timeStyle: "short",
                         })}
                       </div>
-                      {event.location && <div className="text-sm text-muted-foreground">📍 {event.location}</div>}
+                      {event.location && <div className="text-xs text-muted-foreground">📍 {event.location}</div>}
                     </div>
                     <Button
                       onClick={() => handleConfirmEdit(event.id, event.title)}
                       size="sm"
-                      className="bg-primary hover:bg-primary/90"
+                      className="bg-primary hover:bg-primary/90 w-full sm:w-auto text-xs sm:text-sm"
                     >
                       Editar este
                     </Button>
@@ -486,7 +495,7 @@ export function ChatInterface() {
                 ))}
               </div>
               <div className="flex justify-center">
-                <Button onClick={handleCancelEdit} variant="outline" size="sm">
+                <Button onClick={handleCancelEdit} variant="outline" size="sm" className="text-xs sm:text-sm">
                   Cancelar
                 </Button>
               </div>
@@ -497,30 +506,29 @@ export function ChatInterface() {
       </div>
 
       {/* Input Area */}
-      <div className="border-t bg-card px-6 py-4">
+      <div className="border-t bg-card px-3 sm:px-6 py-3 sm:py-4">
         <div className="flex gap-2">
           <Button
             variant="outline"
             size="icon"
-            className="shrink-0 bg-transparent"
+            className="shrink-0 bg-transparent h-9 w-9 sm:h-10 sm:w-10"
             disabled
             title="Grabación de voz (próximamente)"
           >
-            <Mic className="h-4 w-4" />
+            <Mic className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Button>
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder="Escribí tu solicitud... (ej: 'Agéndame reunión mañana a las 10')"
+            placeholder="Escribí tu solicitud..."
             disabled={isLoading}
-            className="flex-1"
+            className="flex-1 text-sm"
           />
-          <Button onClick={handleSendMessage} disabled={!input.trim() || isLoading} size="icon" className="shrink-0">
-            <Send className="h-4 w-4" />
+          <Button onClick={handleSendMessage} disabled={!input.trim() || isLoading} size="icon" className="shrink-0 h-9 w-9 sm:h-10 sm:w-10">
+            <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">Presioná Enter para enviar</p>
       </div>
     </div>
   )
