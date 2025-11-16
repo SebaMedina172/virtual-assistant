@@ -2,6 +2,7 @@
 
 import type React from "react"
 import { ThemeToggle } from "./theme-toggle"
+import { VoiceInput } from "./voice-input"
 
 import { useState, useRef, useEffect } from "react"
 import { useSession, signIn, signOut } from "next-auth/react"
@@ -10,7 +11,7 @@ import { MessageBubble } from "./message-bubble"
 import { EventList } from "./event-list"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
-import { Mic, Send, LogOut } from "lucide-react"
+import { Send, LogOut } from "lucide-react"
 
 export function ChatInterface() {
   const { data: session, status } = useSession()
@@ -280,7 +281,10 @@ export function ChatInterface() {
         },
         body: JSON.stringify({
           message: "confirmar edición",
-          conversationHistory: messages,
+          conversationHistory: messages.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
           confirmEdit: {
             eventId,
             eventTitle,
@@ -310,7 +314,7 @@ export function ChatInterface() {
       setMessages((prev) => [...prev, assistantMessage])
       setPendingEdit(null)
     } catch (error) {
-      console.error("[v0] Error confirming edit:", error)
+      console.error("Error confirming edit:", error)
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -340,6 +344,106 @@ export function ChatInterface() {
       e.preventDefault()
       handleSendMessage()
     }
+  }
+
+  const handleVoiceTranscript = (transcript: string) => {
+    // Simplemente reemplazar el input con el transcript completo
+    // El transcript ya contiene todo el texto acumulado desde voice-input
+    setInput(transcript)
+  }
+
+  const handleVoiceSubmit = (transcript: string) => {
+    if (!transcript.trim()) return
+    
+    setInput("")
+    setIsLoading(true)
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: transcript,
+      timestamp: new Date(),
+    }
+    setMessages((prev) => [...prev, userMessage])
+
+    fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: transcript,
+        conversationHistory: messages.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        })),
+      }),
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("Error en la respuesta del servidor")
+        return response.json() as Promise<AssistantResponse>
+      })
+      .then((data) => {
+        console.log("Assistant response from voice:", data)
+
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: data.response,
+          timestamp: new Date(),
+          metadata: {
+            intent: data.intent,
+            event: data.event,
+            needs_confirmation: data.needs_confirmation,
+          },
+        }
+
+        setMessages((prev) => [...prev, assistantMessage])
+
+        if (data.intent === "list_events" && (data as any).events) {
+          const eventsMessage: Message = {
+            id: (Date.now() + 2).toString(),
+            role: "assistant",
+            content: "",
+            timestamp: new Date(),
+            metadata: {
+              intent: "list_events",
+              event: undefined,
+              needs_confirmation: false,
+              events: (data as any).events,
+            },
+          }
+          setMessages((prev) => [...prev, eventsMessage])
+        }
+
+        if (data.intent === "delete_event" && (data as any).matchingEvents) {
+          setPendingDelete((data as any).matchingEvents)
+        }
+
+        if (data.intent === "update_event" && (data as any).matchingEvents) {
+          setPendingEdit({
+            events: (data as any).matchingEvents,
+            updates: (data as any).editUpdates,
+          })
+        }
+
+        if (data.needs_confirmation && data.event) {
+          setPendingEvent(data.event)
+        }
+      })
+      .catch((error) => {
+        console.error("Error in voice submission:", error)
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "Disculpá, hubo un error procesando tu solicitud por voz. Por favor intentá de nuevo.",
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, errorMessage])
+      })
+      .finally(() => {
+        setIsLoading(false)
+      })
   }
 
   return (
@@ -507,16 +611,12 @@ export function ChatInterface() {
 
       {/* Input Area */}
       <div className="border-t bg-card px-3 sm:px-6 py-3 sm:py-4">
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            className="shrink-0 bg-transparent h-9 w-9 sm:h-10 sm:w-10"
-            disabled
-            title="Grabación de voz (próximamente)"
-          >
-            <Mic className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-          </Button>
+        <div className="flex gap-2 items-start">
+          <VoiceInput 
+            onTranscriptChange={handleVoiceTranscript}
+            onTranscriptSubmit={handleVoiceSubmit}
+            disabled={isLoading || !session}
+          />
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
