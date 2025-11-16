@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { ThemeToggle } from "./theme-toggle"
 
 import { useState, useRef, useEffect } from "react"
 import { useSession, signIn, signOut } from "next-auth/react"
@@ -352,6 +353,7 @@ export function ChatInterface() {
             <p className="text-sm text-muted-foreground mt-1">Gestioná tus eventos con lenguaje natural</p>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             {status === "loading" ? (
               <div className="text-sm text-muted-foreground">Cargando...</div>
             ) : session ? (
