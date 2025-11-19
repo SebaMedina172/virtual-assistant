@@ -9,6 +9,7 @@ import { useSession, signIn, signOut } from "next-auth/react"
 import type { Message, AssistantResponse } from "@/types"
 import { MessageBubble } from "./message-bubble"
 import { EventList } from "./event-list"
+import { TaskList } from "./task-list"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Send, LogOut } from "lucide-react"
@@ -20,13 +21,14 @@ export function ChatInterface() {
       id: "1",
       role: "assistant",
       content:
-        "Hola! Soy tu asistente virtual de calendario. Podés crear eventos con colores, recordatorios, recurrencia y links de Meet. ¿En qué puedo ayudarte?",
+        "Hola! Soy tu asistente virtual de calendario y tareas. Podés crear eventos con colores, recordatorios, recurrencia y links de Meet, y también gestionar tus tareas. ¿En qué puedo ayudarte?",
       timestamp: new Date(),
     },
   ])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [pendingEvent, setPendingEvent] = useState<any>(null)
+  const [pendingTask, setPendingTask] = useState<any>(null)
   const [pendingDelete, setPendingDelete] = useState<any[]>([])
   const [pendingEdit, setPendingEdit] = useState<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -80,6 +82,7 @@ export function ChatInterface() {
         metadata: {
           intent: data.intent,
           event: data.event,
+          task: data.task,
           needs_confirmation: data.needs_confirmation,
         },
       }
@@ -95,6 +98,7 @@ export function ChatInterface() {
           metadata: {
             intent: "list_events",
             event: undefined,
+            task: undefined,
             needs_confirmation: false,
             events: (data as any).events,
           },
@@ -111,6 +115,12 @@ export function ChatInterface() {
         const matchingEvents = (data as any).matchingEvents
         const editUpdates = (data as any).editUpdates
         setPendingEdit({ events: matchingEvents, updates: editUpdates })
+      }
+
+      if (data.needs_confirmation && data.task) {
+        setPendingTask(data.task)
+      } else {
+        setPendingTask(null)
       }
 
       if (data.needs_confirmation && data.event) {
@@ -169,6 +179,7 @@ export function ChatInterface() {
         metadata: {
           intent: data.intent,
           event: data.event,
+          task: undefined,
           needs_confirmation: false,
         },
       }
@@ -232,6 +243,7 @@ export function ChatInterface() {
         metadata: {
           intent: data.intent,
           event: undefined,
+          task: undefined,
           needs_confirmation: false,
         },
       }
@@ -307,6 +319,7 @@ export function ChatInterface() {
         metadata: {
           intent: data.intent,
           event: undefined,
+          task: undefined,
           needs_confirmation: false,
         },
       }
@@ -334,6 +347,70 @@ export function ChatInterface() {
       id: Date.now().toString(),
       role: "assistant",
       content: "Entendido, no edité ningún evento. ¿Hay algo más en lo que pueda ayudarte?",
+      timestamp: new Date(),
+    }
+    setMessages((prev) => [...prev, cancelMessage])
+  }
+
+  const handleConfirmTask = async () => {
+    if (!pendingTask) return
+
+    setIsLoading(true)
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: "confirmar",
+          conversationHistory: messages,
+          confirmTask: pendingTask,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Error confirmando la tarea")
+      }
+
+      const data: AssistantResponse = await response.json()
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.response,
+        timestamp: new Date(),
+        metadata: {
+          intent: data.intent,
+          event: undefined,
+          task: data.task,
+          needs_confirmation: false,
+        },
+      }
+
+      setMessages((prev) => [...prev, assistantMessage])
+      setPendingTask(null)
+    } catch (error) {
+      console.error("Error confirming task:", error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Disculpá, hubo un error creando la tarea. Por favor intentá de nuevo.",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCancelTask = () => {
+    setPendingTask(null)
+    const cancelMessage: Message = {
+      id: Date.now().toString(),
+      role: "assistant",
+      content: "Entendido, cancelé la creación de la tarea. ¿Hay algo más en lo que pueda ayudarte?",
       timestamp: new Date(),
     }
     setMessages((prev) => [...prev, cancelMessage])
@@ -394,6 +471,7 @@ export function ChatInterface() {
           metadata: {
             intent: data.intent,
             event: data.event,
+            task: data.task,
             needs_confirmation: data.needs_confirmation,
           },
         }
@@ -409,6 +487,7 @@ export function ChatInterface() {
             metadata: {
               intent: "list_events",
               event: undefined,
+              task: undefined,
               needs_confirmation: false,
               events: (data as any).events,
             },
@@ -425,6 +504,10 @@ export function ChatInterface() {
             events: (data as any).matchingEvents,
             updates: (data as any).editUpdates,
           })
+        }
+
+        if (data.needs_confirmation && data.task) {
+          setPendingTask(data.task)
         }
 
         if (data.needs_confirmation && data.event) {
@@ -497,6 +580,11 @@ export function ChatInterface() {
             {message.metadata?.intent === "list_events" && (message.metadata as any).events && (
               <div className="mb-3 sm:mb-4">
                 <EventList events={(message.metadata as any).events} />
+              </div>
+            )}
+            {message.metadata?.intent === "list_tasks" && (message.metadata as any).tasks && (
+              <div className="mb-3 sm:mb-4">
+                <TaskList tasks={(message.metadata as any).tasks} />
               </div>
             )}
           </div>
@@ -604,6 +692,16 @@ export function ChatInterface() {
                 </Button>
               </div>
             </div>
+          </div>
+        )}
+        {pendingTask && !isLoading && (
+          <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <Button onClick={handleConfirmTask} size="sm" className="w-full sm:w-auto">
+              Confirmar y crear tarea
+            </Button>
+            <Button onClick={handleCancelTask} variant="outline" size="sm" className="w-full sm:w-auto">
+              Cancelar
+            </Button>
           </div>
         )}
         <div ref={messagesEndRef} />
