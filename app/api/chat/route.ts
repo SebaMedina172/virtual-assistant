@@ -7,10 +7,68 @@ import { SYSTEM_PROMPT, buildConversationContext } from "@/lib/prompts"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { message, conversationHistory, confirmEvent, confirmDelete, confirmDeleteBatch, confirmEdit } = body
+    const { message, conversationHistory, confirmEvent, confirmDelete, confirmDeleteBatch, confirmEdit, confirmTask } = body
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Mensaje inválido" }, { status: 400 })
+    }
+
+    if (confirmTask) {
+      const session = await getServerSession(authOptions)
+
+      console.log("Chat - Confirming task:", JSON.stringify(confirmTask, null, 2))
+
+      if (!session || !session.accessToken) {
+        return NextResponse.json({
+          intent: "create_task",
+          needs_confirmation: false,
+          task: null,
+          response:
+            "Para crear tareas necesito que conectes tu cuenta de Google. Por favor hacé clic en 'Conectar Google Calendar' en la parte superior.",
+        })
+      }
+
+      try {
+        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
+        const createResponse = await fetch(`${baseUrl}/api/tasks/create`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Cookie: request.headers.get("cookie") || "",
+          },
+          body: JSON.stringify({ task: confirmTask }),
+        })
+
+        console.log("Chat - Tasks API response status:", createResponse.status)
+
+        const createResult = await createResponse.json()
+        console.log("Chat - Tasks API response:", createResult)
+
+        if (createResult.success) {
+          return NextResponse.json({
+            intent: "create_task",
+            needs_confirmation: false,
+            task: confirmTask,
+            response: `Perfecto! Tu tarea "${confirmTask.title}" fue creada exitosamente en tu Google Tasks.`,
+            taskCreated: true,
+          })
+        } else {
+          return NextResponse.json({
+            intent: "create_task",
+            needs_confirmation: false,
+            task: null,
+            response: `Hubo un problema creando la tarea: ${createResult.error}`,
+          })
+        }
+      } catch (error) {
+        console.error("Error creating task:", error)
+        return NextResponse.json({
+          intent: "create_task",
+          needs_confirmation: false,
+          task: null,
+          response: "Disculpá, hubo un error creando la tarea. Por favor intentá de nuevo.",
+        })
+      }
     }
 
     if (confirmDeleteBatch && Array.isArray(confirmDeleteBatch) && confirmDeleteBatch.length > 0) {
@@ -257,8 +315,8 @@ Recordá: Respondé SOLO con JSON válido, sin texto adicional antes o después.
     try {
       // Limpiar la respuesta por si tiene markdown code blocks
       const cleanedText = text
-        .replace(/```json\n?/g, "")
-        .replace(/```\n?/g, "")
+        .replace(/\`\`\`json\n?/g, "")
+        .replace(/\`\`\`\n?/g, "")
         .trim()
       parsedResponse = JSON.parse(cleanedText)
     } catch (parseError) {
