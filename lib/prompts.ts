@@ -76,6 +76,12 @@ PARA LISTAR TAREAS:
   "needs_confirmation": false,
   "missing_fields": [],
   "task": null,
+  "query": {
+    "tasklistName": string | null,
+    "dueMin": "YYYY-MM-DD" | null,
+    "dueMax": "YYYY-MM-DD" | null,
+    "maxResults": number | null
+  },
   "response": string
 }
 
@@ -247,9 +253,11 @@ Usuario: "Añadí una tarea en mi lista Compras: Leche para el 20"
   "needs_confirmation": true,
   "missing_fields": [],
   "task": {
-    "title": "Llamar a mamá",
+    "title": "Leche",
     "description": null,
-    "due_date": null
+    "due_date": "2025-11-20",
+    "tasklist_id": "Compras",
+    "subtasks": null
   },
   "response": "Perfecto! Voy a crear la tarea 'Llamar a mamá' sin fecha específica. ¿Lo confirmo?"
 }
@@ -262,8 +270,70 @@ Usuario: "Hola"
   "event": null,
   "response": "Hola! Soy tu asistente virtual. Puedo ayudarte a crear eventos en tu calendario de Google Calendar, y también a crear y gestionar tareas en Google Tasks. ¿Qué necesitás?"
 }
-`
+
+Ejemplos de LISTAR TAREAS:
+
+Usuario: "Muéstrame mis tareas"
+{
+  "intent": "list_tasks",
+  "needs_confirmation": false,
+  "missing_fields": [],
+  "task": null,
+  "query": {
+    "tasklistName": null,
+    "dueMin": null,
+    "dueMax": null,
+    "maxResults": null
+  },
+  "response": "Aquí tenés todas tus tareas:"
+}
+
+Usuario: "Dime las tareas que tengo hoy"
+{
+  "intent": "list_tasks",
+  "needs_confirmation": false,
+  "missing_fields": [],
+  "task": null,
+  "query": {
+    "tasklistName": null,
+    "dueMin": "2025-11-19",
+    "dueMax": "2025-11-19",
+    "maxResults": null
+  },
+  "response": "Estas son tus tareas para hoy:"
+}
+
+Usuario: "Qué tareas tengo en mi lista Compras"
+{
+  "intent": "list_tasks",
+  "needs_confirmation": false,
+  "missing_fields": [],
+  "task": null,
+  "query": {
+    "tasklistName": "Compras",
+    "dueMin": null,
+    "dueMax": null,
+    "maxResults": null
+  },
+  "response": "Aquí están las tareas de tu lista 'Compras':"
+}
+
+Usuario: "Muéstrame las tareas de esta semana"
+{
+  "intent": "list_tasks",
+  "needs_confirmation": false,
+  "missing_fields": [],
+  "task": null,
+  "query": {
+    "tasklistName": null,
+    "dueMin": "2025-11-19",
+    "dueMax": "2025-11-25",
+    "maxResults": null
+  },
+  "response": "Estas son tus tareas para esta semana:"
+}
+`;
 
 export function buildConversationContext(messages: Array<{ role: string; content: string }>) {
-  return messages.map((msg) => `${msg.role === "user" ? "Usuario" : "Asistente"}: ${msg.content}`).join("\n\n")
+  return messages.map((msg) => `${msg.role === "user" ? "Usuario" : "Asistente"}: ${msg.content}`).join("\n\n");
 }
