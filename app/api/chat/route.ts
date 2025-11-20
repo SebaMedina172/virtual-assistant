@@ -7,7 +7,8 @@ import { SYSTEM_PROMPT, buildConversationContext } from "@/lib/prompts"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { message, conversationHistory, confirmEvent, confirmDelete, confirmDeleteBatch, confirmEdit, confirmTask } = body
+    const { message, conversationHistory, confirmEvent, confirmDelete, confirmDeleteBatch, confirmEdit, confirmTask } =
+      body
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Mensaje inválido" }, { status: 400 })
@@ -295,7 +296,21 @@ export async function POST(request: NextRequest) {
 
     const context = conversationHistory?.length ? buildConversationContext(conversationHistory.slice(-5)) : ""
 
+    const currentDate = new Date()
+    const currentDateStr = currentDate.toLocaleDateString("es-AR", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      timeZone: "America/Argentina/Buenos_Aires",
+    })
+    const currentIsoDate = currentDate.toISOString().split("T")[0] // YYYY-MM-DD
+
     const fullPrompt = `${SYSTEM_PROMPT}
+
+FECHA ACTUAL: Hoy es ${currentDateStr} (${currentIsoDate}).
+Cuando el usuario diga "hoy", se refiere a ${currentIsoDate}.
+Cuando el usuario diga "mañana", se refiere a la fecha siguiente a ${currentIsoDate}.
 
 ${context ? `Contexto de la conversación anterior:\n${context}\n\n` : ""}Usuario: ${message}
 
@@ -315,8 +330,8 @@ Recordá: Respondé SOLO con JSON válido, sin texto adicional antes o después.
     try {
       // Limpiar la respuesta por si tiene markdown code blocks
       const cleanedText = text
-        .replace(/\`\`\`json\n?/g, "")
-        .replace(/\`\`\`\n?/g, "")
+        .replace(/```json\n?/g, "")
+        .replace(/```\n?/g, "")
         .trim()
       parsedResponse = JSON.parse(cleanedText)
     } catch (parseError) {
@@ -358,7 +373,7 @@ Recordá: Respondé SOLO con JSON válido, sin texto adicional antes o después.
           },
         ]
 
-        const searchPromises = queries.map((query: any) => 
+        const searchPromises = queries.map((query: any) =>
           fetch(`${baseUrl}/api/calendar/delete`, {
             method: "POST",
             headers: {
@@ -497,6 +512,58 @@ Recordá: Respondé SOLO con JSON válido, sin texto adicional antes o después.
           missing_fields: [],
           event: null,
           response: "Disculpá, hubo un error obteniendo los eventos. Por favor intentá de nuevo.",
+        })
+      }
+    }
+
+    if (parsedResponse.intent === "list_tasks" && parsedResponse.query) {
+      const session = await getServerSession(authOptions)
+
+      console.log("Chat - Listing tasks:", JSON.stringify(parsedResponse.query, null, 2))
+
+      if (!session || !session.accessToken) {
+        return NextResponse.json({
+          intent: "list_tasks",
+          needs_confirmation: false,
+          task: null,
+          response:
+            "Para ver tus tareas necesito que conectes tu cuenta de Google. Por favor hacé clic en 'Conectar Google Calendar' en la parte superior.",
+        })
+      }
+
+      try {
+        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
+        const listResponse = await fetch(`${baseUrl}/api/tasks/list`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Cookie: request.headers.get("cookie") || "",
+          },
+          body: JSON.stringify(parsedResponse.query),
+        })
+
+        const listResult = await listResponse.json()
+
+        if (listResult.success) {
+          return NextResponse.json({
+            ...parsedResponse,
+            tasks: listResult.tasks,
+          })
+        } else {
+          return NextResponse.json({
+            intent: "list_tasks",
+            needs_confirmation: false,
+            task: null,
+            response: `Hubo un problema obteniendo las tareas: ${listResult.error}`,
+          })
+        }
+      } catch (error) {
+        console.error("Error listing tasks:", error)
+        return NextResponse.json({
+          intent: "list_tasks",
+          needs_confirmation: false,
+          task: null,
+          response: "Disculpá, hubo un error obteniendo las tareas. Por favor intentá de nuevo.",
         })
       }
     }

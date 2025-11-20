@@ -106,6 +106,23 @@ export function ChatInterface() {
         setMessages((prev) => [...prev, eventsMessage])
       }
 
+      if (data.intent === "list_tasks" && (data as any).tasks) {
+        const tasksMessage: Message = {
+          id: (Date.now() + 2).toString(),
+          role: "assistant",
+          content: "",
+          timestamp: new Date(),
+          metadata: {
+            intent: "list_tasks",
+            event: undefined,
+            task: undefined,
+            needs_confirmation: false,
+            tasks: (data as any).tasks,
+          },
+        }
+        setMessages((prev) => [...prev, tasksMessage])
+      }
+
       if (data.intent === "delete_event" && (data as any).matchingEvents) {
         const matchingEvents = (data as any).matchingEvents
         setPendingDelete(matchingEvents)
@@ -493,6 +510,23 @@ export function ChatInterface() {
             },
           }
           setMessages((prev) => [...prev, eventsMessage])
+        }
+
+        if (data.intent === "list_tasks" && (data as any).tasks) {
+          const tasksMessage: Message = {
+            id: (Date.now() + 2).toString(),
+            role: "assistant",
+            content: "",
+            timestamp: new Date(),
+            metadata: {
+              intent: "list_tasks",
+              event: undefined,
+              task: undefined,
+              needs_confirmation: false,
+              tasks: (data as any).tasks,
+            },
+          }
+          setMessages((prev) => [...prev, tasksMessage])
         }
 
         if (data.intent === "delete_event" && (data as any).matchingEvents) {

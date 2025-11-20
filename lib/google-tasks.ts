@@ -23,7 +23,10 @@ export async function resolveTasklistId(accessToken: string, tasklistName: strin
     })
 
     const tasklists = response.data.items || []
-    console.log("Available tasklists:", tasklists.map((t) => ({ id: t.id, title: t.title })))
+    console.log(
+      "Available tasklists:",
+      tasklists.map((t) => ({ id: t.id, title: t.title })),
+    )
 
     // Find tasklist by name (case-insensitive)
     const matchedTasklist = tasklists.find((tl) => tl.title?.toLowerCase() === tasklistName.toLowerCase())
@@ -94,12 +97,7 @@ export async function createTask(accessToken: string, task: Task, parentTaskId?:
 
       for (const subtask of task.subtasks) {
         try {
-          await createTask(
-            accessToken,
-            subtask,
-            createdTaskId,
-            tasklistId  
-          )
+          await createTask(accessToken, subtask, createdTaskId, tasklistId)
         } catch (subtaskError) {
           console.error("Error creating subtask:", subtaskError)
         }
@@ -122,6 +120,8 @@ export async function listTasks(
   options: {
     maxResults?: number
     tasklistId?: string
+    dueMin?: string // ISO date "YYYY-MM-DD"
+    dueMax?: string // ISO date "YYYY-MM-DD"
   } = {},
 ) {
   try {
@@ -135,15 +135,37 @@ export async function listTasks(
 
     const tasklistId = options.tasklistId || "@default"
 
-    const response = await tasks.tasks.list({
+    const listParams: any = {
       tasklist: tasklistId,
-      maxResults: options.maxResults || 50,
-      showCompleted: false, // Don't show completed tasks by default
-    })
+      maxResults: options.maxResults || 100, // Increased to get more tasks for filtering
+      showCompleted: true,
+      showHidden: false,
+    }
 
-    const tasksList = response.data.items || []
+    console.log("Listing tasks with params:", JSON.stringify(listParams, null, 2))
+
+    const response = await tasks.tasks.list(listParams)
+
+    let tasksList = response.data.items || []
 
     console.log("Found", tasksList.length, "tasks in tasklist:", tasklistId)
+
+    if (options.dueMin || options.dueMax) {
+      tasksList = tasksList.filter((task) => {
+        if (!task.due) return false // Skip tasks without due date
+
+        // Extract date only (YYYY-MM-DD) from the due field
+        const taskDueDate = task.due.split("T")[0]
+
+        // Check if task is within the date range
+        if (options.dueMin && taskDueDate < options.dueMin) return false
+        if (options.dueMax && taskDueDate > options.dueMax) return false
+
+        return true
+      })
+
+      console.log("After date filtering:", tasksList.length, "tasks remain")
+    }
 
     return {
       success: true,
@@ -151,9 +173,10 @@ export async function listTasks(
         id: task.id,
         title: task.title,
         description: task.notes,
-        due_date: task.due,
+        due_date: task.due ? task.due.split("T")[0] : null,
         status: task.status,
         completed: task.completed ? new Date(task.completed) : null,
+        parent: task.parent || null,
       })),
     }
   } catch (error) {
