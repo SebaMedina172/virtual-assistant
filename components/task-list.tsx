@@ -18,24 +18,31 @@ interface TaskListProps {
 
 function formatDate(dateString?: string): string {
   if (!dateString) return "Sin fecha"
-  const date = new Date(dateString)
+  
+  // Parse as UTC date to avoid timezone shifts
+  const [year, month, day] = dateString.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  
   return date.toLocaleDateString("es-AR", {
     weekday: "long",
     day: "numeric",
     month: "long",
+    timeZone: "UTC" // Force UTC to prevent timezone conversion
   })
 }
 
 function getTaskPriority(dueDate?: string): "overdue" | "today" | "upcoming" | "no-date" {
   if (!dueDate) return "no-date"
   
+  // Get today in UTC to match how dates are stored
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const todayUTC = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
   
-  const taskDate = new Date(dueDate)
-  taskDate.setHours(0, 0, 0, 0)
+  // Parse task date as UTC
+  const [year, month, day] = dueDate.split('-').map(Number)
+  const taskDateUTC = Date.UTC(year, month - 1, day)
   
-  const diff = taskDate.getTime() - today.getTime()
+  const diff = taskDateUTC - todayUTC
   const days = diff / (1000 * 60 * 60 * 24)
   
   if (days < 0) return "overdue"
