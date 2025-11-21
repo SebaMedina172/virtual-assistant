@@ -30,6 +30,7 @@ export function ChatInterface() {
   const [pendingEvent, setPendingEvent] = useState<any>(null)
   const [pendingTask, setPendingTask] = useState<any>(null)
   const [pendingDelete, setPendingDelete] = useState<any[]>([])
+  const [pendingDeleteTasks, setPendingDeleteTasks] = useState<any[]>([])
   const [pendingEdit, setPendingEdit] = useState<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -126,6 +127,11 @@ export function ChatInterface() {
       if (data.intent === "delete_event" && (data as any).matchingEvents) {
         const matchingEvents = (data as any).matchingEvents
         setPendingDelete(matchingEvents)
+      }
+
+      if (data.intent === "delete_task" && (data as any).matchingTasks) {
+        const matchingTasks = (data as any).matchingTasks
+        setPendingDeleteTasks(matchingTasks)
       }
 
       if (data.intent === "update_event" && (data as any).matchingEvents) {
@@ -533,11 +539,14 @@ export function ChatInterface() {
           setPendingDelete((data as any).matchingEvents)
         }
 
+        if (data.intent === "delete_task" && (data as any).matchingTasks) {
+          setPendingDeleteTasks((data as any).matchingTasks)
+        }
+
         if (data.intent === "update_event" && (data as any).matchingEvents) {
-          setPendingEdit({
-            events: (data as any).matchingEvents,
-            updates: (data as any).editUpdates,
-          })
+          const matchingEvents = (data as any).matchingEvents
+          const editUpdates = (data as any).editUpdates
+          setPendingEdit({ events: matchingEvents, updates: editUpdates })
         }
 
         if (data.needs_confirmation && data.task) {
@@ -561,6 +570,75 @@ export function ChatInterface() {
       .finally(() => {
         setIsLoading(false)
       })
+  }
+
+  const handleRemoveFromDeleteTasks = (taskId: string) => {
+    setPendingDeleteTasks((prev) => prev.filter((t) => t.id !== taskId))
+  }
+
+  const handleConfirmDeleteTasks = async () => {
+    if (!pendingDeleteTasks || pendingDeleteTasks.length === 0) return
+
+    setIsLoading(true)
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: "confirmar eliminación de tareas",
+          conversationHistory: messages,
+          confirmDeleteTaskBatch: pendingDeleteTasks,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Error confirmando la eliminación de tareas")
+      }
+
+      const data: AssistantResponse = await response.json()
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.response,
+        timestamp: new Date(),
+        metadata: {
+          intent: data.intent,
+          event: undefined,
+          task: undefined,
+          needs_confirmation: false,
+        },
+      }
+
+      setMessages((prev) => [...prev, assistantMessage])
+      setPendingDeleteTasks([])
+    } catch (error) {
+      console.error("Error confirming delete tasks:", error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Disculpá, hubo un error eliminando la tarea. Por favor intentá de nuevo.",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+      setPendingDeleteTasks([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCancelDeleteTasks = () => {
+    setPendingDeleteTasks([])
+    const cancelMessage: Message = {
+      id: Date.now().toString(),
+      role: "assistant",
+      content: "Entendido, no eliminé la tarea. ¿Hay algo más en lo que pueda ayudarte?",
+      timestamp: new Date(),
+    }
+    setMessages((prev) => [...prev, cancelMessage])
   }
 
   return (
@@ -648,7 +726,7 @@ export function ChatInterface() {
             <Button onClick={handleConfirmEvent} size="sm" className="w-full sm:w-auto">
               Confirmar y crear evento
             </Button>
-            <Button onClick={handleCancelEvent} variant="outline" size="sm" className="w-full sm:w-auto">
+            <Button onClick={handleCancelEvent} variant="outline" size="sm" className="w-full sm:w-auto bg-transparent">
               Cancelar
             </Button>
           </div>
@@ -681,10 +759,80 @@ export function ChatInterface() {
                 ))}
               </div>
               <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-3">
-                <Button onClick={handleConfirmDelete} variant="destructive" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
+                <Button
+                  onClick={handleConfirmDelete}
+                  variant="destructive"
+                  size="sm"
+                  className="w-full sm:w-auto text-xs sm:text-sm"
+                >
                   Confirmar y eliminar {pendingDelete.length === 1 ? "evento" : "todos"}
                 </Button>
-                <Button onClick={handleCancelDelete} variant="outline" size="sm" className="w-full sm:w-auto text-xs sm:text-sm">
+                <Button
+                  onClick={handleCancelDelete}
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto text-xs sm:text-sm bg-transparent"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        {pendingDeleteTasks.length > 0 && !isLoading && (
+          <div className="mb-3 sm:mb-4">
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 sm:p-4">
+              <h3 className="font-semibold text-destructive mb-2 sm:mb-3 text-sm sm:text-base">
+                Tareas a eliminar ({pendingDeleteTasks.length}):
+              </h3>
+              <div className="space-y-2 mb-3 sm:mb-4">
+                {pendingDeleteTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="flex items-center justify-between bg-background rounded p-2 sm:p-3 gap-2"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{task.title}</div>
+                      {task.due_date && (
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(task.due_date + "T00:00:00").toLocaleDateString("es-AR", {
+                            weekday: "long",
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </div>
+                      )}
+                      {task.description && (
+                        <div className="text-xs text-muted-foreground truncate">{task.description}</div>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveFromDeleteTasks(task.id)}
+                      className="text-xs text-muted-foreground hover:text-foreground shrink-0"
+                    >
+                      Quitar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-3">
+                <Button
+                  onClick={handleConfirmDeleteTasks}
+                  variant="destructive"
+                  size="sm"
+                  className="w-full sm:w-auto text-xs sm:text-sm"
+                >
+                  Confirmar y eliminar {pendingDeleteTasks.length === 1 ? "tarea" : "todas"}
+                </Button>
+                <Button
+                  onClick={handleCancelDeleteTasks}
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto text-xs sm:text-sm bg-transparent"
+                >
                   Cancelar
                 </Button>
               </div>
@@ -721,7 +869,7 @@ export function ChatInterface() {
                 ))}
               </div>
               <div className="flex justify-center">
-                <Button onClick={handleCancelEdit} variant="outline" size="sm" className="text-xs sm:text-sm">
+                <Button onClick={handleCancelEdit} variant="outline" size="sm" className="text-xs sm:text-sm bg-transparent">
                   Cancelar
                 </Button>
               </div>
@@ -733,7 +881,7 @@ export function ChatInterface() {
             <Button onClick={handleConfirmTask} size="sm" className="w-full sm:w-auto">
               Confirmar y crear tarea
             </Button>
-            <Button onClick={handleCancelTask} variant="outline" size="sm" className="w-full sm:w-auto">
+            <Button onClick={handleCancelTask} variant="outline" size="sm" className="w-full sm:w-auto bg-transparent">
               Cancelar
             </Button>
           </div>

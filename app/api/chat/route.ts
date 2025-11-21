@@ -7,8 +7,16 @@ import { SYSTEM_PROMPT, buildConversationContext } from "@/lib/prompts"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { message, conversationHistory, confirmEvent, confirmDelete, confirmDeleteBatch, confirmEdit, confirmTask } =
-      body
+    const {
+      message,
+      conversationHistory,
+      confirmEvent,
+      confirmDelete,
+      confirmDeleteBatch,
+      confirmEdit,
+      confirmTask,
+      confirmDeleteTaskBatch,
+    } = body
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Mensaje inválido" }, { status: 400 })
@@ -68,6 +76,61 @@ export async function POST(request: NextRequest) {
           needs_confirmation: false,
           task: null,
           response: "Disculpá, hubo un error creando la tarea. Por favor intentá de nuevo.",
+        })
+      }
+    }
+
+    if (confirmDeleteTaskBatch && Array.isArray(confirmDeleteTaskBatch) && confirmDeleteTaskBatch.length > 0) {
+      const session = await getServerSession(authOptions)
+
+      console.log("Chat - Confirming batch task delete:", JSON.stringify(confirmDeleteTaskBatch, null, 2))
+
+      if (!session || !session.accessToken) {
+        return NextResponse.json({
+          intent: "delete_task",
+          needs_confirmation: false,
+          response:
+            "Para eliminar tareas necesito que conectes tu cuenta de Google. Por favor hacé clic en 'Conectar Google Calendar' en la parte superior.",
+        })
+      }
+
+      try {
+        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
+        const deletePromises = confirmDeleteTaskBatch.map((task: any) =>
+          fetch(`${baseUrl}/api/tasks/delete`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Cookie: request.headers.get("cookie") || "",
+            },
+            body: JSON.stringify({ taskId: task.id, taskListId: task.tasklistId }),
+          }).then((res) => res.json()),
+        )
+
+        const results = await Promise.all(deletePromises)
+        const successCount = results.filter((r) => r.success).length
+        const failedCount = results.length - successCount
+
+        if (failedCount === 0) {
+          const taskTitles = confirmDeleteTaskBatch.map((t: any) => `"${t.title}"`).join(", ")
+          return NextResponse.json({
+            intent: "delete_task",
+            needs_confirmation: false,
+            response: `Listo! ${successCount === 1 ? "La tarea" : "Las tareas"} ${taskTitles} ${successCount === 1 ? "fue eliminada" : "fueron eliminadas"} exitosamente de tu Google Tasks.`,
+          })
+        } else {
+          return NextResponse.json({
+            intent: "delete_task",
+            needs_confirmation: false,
+            response: `Se eliminaron ${successCount} tareas correctamente, pero hubo problemas con ${failedCount}.`,
+          })
+        }
+      } catch (error) {
+        console.error("Error batch deleting tasks:", error)
+        return NextResponse.json({
+          intent: "delete_task",
+          needs_confirmation: false,
+          response: "Disculpá, hubo un error eliminando las tareas. Por favor intentá de nuevo.",
         })
       }
     }
@@ -564,6 +627,80 @@ Recordá: Respondé SOLO con JSON válido, sin texto adicional antes o después.
           needs_confirmation: false,
           task: null,
           response: "Disculpá, hubo un error obteniendo las tareas. Por favor intentá de nuevo.",
+        })
+      }
+    }
+
+    if (parsedResponse.intent === "delete_task" && parsedResponse.taskQuery) {
+      const session = await getServerSession(authOptions)
+
+      if (!session || !session.accessToken) {
+        return NextResponse.json({
+          intent: "delete_task",
+          needs_confirmation: false,
+          response:
+            "Para eliminar tareas necesito que conectes tu cuenta de Google. Por favor hacé clic en 'Conectar Google Calendar' en la parte superior.",
+        })
+      }
+
+      try {
+        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
+
+        const titles =
+          parsedResponse.taskQuery.titles || (parsedResponse.taskQuery.title ? [parsedResponse.taskQuery.title] : [])
+
+        if (titles.length === 0) {
+          return NextResponse.json({
+            intent: "delete_task",
+            needs_confirmation: false,
+            response: "No especificaste qué tarea querés eliminar. Por favor indicá el nombre de la tarea.",
+          })
+        }
+
+        // Search for all tasks matching the titles
+        const searchPromises = titles.map((title: string) =>
+          fetch(`${baseUrl}/api/tasks/delete`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Cookie: request.headers.get("cookie") || "",
+            },
+            body: JSON.stringify({
+              searchCriteria: {
+                title: title,
+                tasklistId: parsedResponse.taskQuery.tasklistId,
+                dueDate: parsedResponse.taskQuery.dueDate,
+              },
+            }),
+          }).then((res) => res.json()),
+        )
+
+        const searchResults = await Promise.all(searchPromises)
+        const allTasks = searchResults.flatMap((result) => (result.success && result.tasks ? result.tasks : []))
+
+        if (allTasks.length === 0) {
+          return NextResponse.json({
+            intent: "delete_task",
+            needs_confirmation: false,
+            response:
+              titles.length === 1
+                ? `No encontré ninguna tarea con el nombre "${titles[0]}".`
+                : `No encontré ninguna tarea que coincida con los nombres especificados.`,
+          })
+        } else {
+          return NextResponse.json({
+            intent: "delete_task",
+            needs_confirmation: true,
+            response: parsedResponse.response,
+            matchingTasks: allTasks,
+          })
+        }
+      } catch (error) {
+        console.error("Error searching tasks for deletion:", error)
+        return NextResponse.json({
+          intent: "delete_task",
+          needs_confirmation: false,
+          response: "Disculpá, hubo un error buscando las tareas. Por favor intentá de nuevo.",
         })
       }
     }
