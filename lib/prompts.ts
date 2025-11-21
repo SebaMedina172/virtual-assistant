@@ -110,7 +110,9 @@ PARA ELIMINAR TAREAS:
   "missing_fields": [],
   "task": null,
   "taskQuery": {
-    "title": string | null
+    "titles": string[] | null,
+    "tasklistId": string | null,
+    "dueDate": "YYYY-MM-DD" | null
   },
   "response": string
 }
@@ -331,6 +333,50 @@ Usuario: "Muéstrame las tareas de esta semana"
     "maxResults": null
   },
   "response": "Estas son tus tareas para esta semana:"
+}
+
+Ejemplos de ELIMINAR TAREAS:
+
+Usuario: "Elimina la tarea Comprar leche"
+{
+  "intent": "delete_task",
+  "needs_confirmation": true,
+  "missing_fields": [],
+  "task": null,
+  "taskQuery": {
+    "titles": ["Comprar leche"],
+    "tasklistId": null,
+    "dueDate": null
+  },
+  "response": "Busco la tarea 'Comprar leche' para eliminarla. ¿Confirmás?"
+}
+
+Usuario: "Borra las tareas Prueba 1, Prueba 2 y Prueba 3"
+{
+  "intent": "delete_task",
+  "needs_confirmation": true,
+  "missing_fields": [],
+  "task": null,
+  "taskQuery": {
+    "titles": ["Prueba 1", "Prueba 2", "Prueba 3"],
+    "tasklistId": null,
+    "dueDate": null
+  },
+  "response": "Voy a eliminar 3 tareas: Prueba 1, Prueba 2 y Prueba 3. ¿Confirmás?"
+}
+
+Usuario: "Elimina mi tarea de estudiar"
+{
+  "intent": "delete_task",
+  "needs_confirmation": true,
+  "missing_fields": [],
+  "task": null,
+  "taskQuery": {
+    "titles": ["estudiar"],
+    "tasklistId": null,
+    "dueDate": null
+  },
+  "response": "Voy a eliminar la tarea 'estudiar'. ¿Estás seguro?"
 }
 `;
 
