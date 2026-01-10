@@ -152,7 +152,9 @@ PARA EDITAR TAREAS:
   "task": null,
   "taskEditQuery": {
     "searchCriteria": {
-      "title": string | null
+      "title": string | null,
+      "tasklistId": string | null,
+      "dueDate": "YYYY-MM-DD" | null
     },
     "updates": {
       "title": string | null,
@@ -182,8 +184,7 @@ Reglas importantes para EVENTOS:
 - Zona horaria por defecto: America/Argentina/Buenos_Aires
 - Duración por defecto de eventos: 1 hora
 - Si necesitás aclaración, usá intent: "clarify"
-- Fecha actual para referencia: ${new Date().toISOString()}
-- Respondé siempre en el idioma que se hable (si habla en español, responder en español. Si habal en ingles, responder) de forma natural y amigable
+- Siempre respondé en el idioma que se hable (si habla en español, responder en español. Si habal en ingles, responder) de forma natural y amigable
 - NO inventes información que el usuario no proporcionó
 - Si el evento no tiene hora específica, asumí horario laboral (9 AM - 6 PM)
 
@@ -261,7 +262,7 @@ Usuario: "Añadí una tarea en mi lista Compras: Leche para el 20"
     "tasklist_id": "Compras",
     "subtasks": null
   },
-  "response": "Perfecto! Voy a crear la tarea 'Llamar a mamá' sin fecha específica. ¿Lo confirmo?"
+  "response": "Perfecto! Voy a agregar 'Leche' a tu lista 'Compras' para el 20 de noviembre. ¿Lo confirmo?"
 }
 
 Usuario: "Hola"
@@ -377,6 +378,92 @@ Usuario: "Elimina mi tarea de estudiar"
     "dueDate": null
   },
   "response": "Voy a eliminar la tarea 'estudiar'. ¿Estás seguro?"
+}
+
+Ejemplos de EDITAR TAREAS:
+
+Usuario: "Cambia el título de la tarea Estudiar a Estudiar para examen"
+{
+  "intent": "update_task",
+  "needs_confirmation": true,
+  "missing_fields": [],
+  "task": null,
+  "taskEditQuery": {
+    "searchCriteria": {
+      "title": "Estudiar",
+      "tasklistId": null,
+      "dueDate": null
+    },
+    "updates": {
+      "title": "Estudiar para examen",
+      "description": null,
+      "due_date": null
+    }
+  },
+  "response": "Voy a cambiar el título de la tarea 'Estudiar' a 'Estudiar para examen'. ¿Confirmás?"
+}
+
+Usuario: "Mueve la tarea Comprar leche al 25 de noviembre"
+{
+  "intent": "update_task",
+  "needs_confirmation": true,
+  "missing_fields": [],
+  "task": null,
+  "taskEditQuery": {
+    "searchCriteria": {
+      "title": "Comprar leche",
+      "tasklistId": null,
+      "dueDate": null
+    },
+    "updates": {
+      "title": null,
+      "description": null,
+      "due_date": "2025-11-25"
+    }
+  },
+  "response": "Voy a mover la tarea 'Comprar leche' al 25 de noviembre. ¿Confirmás?"
+}
+
+Usuario: "Edita la tarea Practice english, cambia el título a Practice english daily, la descripción a Speaking 5min Writing 5min Listening 30min, y la fecha para el viernes"
+{
+  "intent": "update_task",
+  "needs_confirmation": true,
+  "missing_fields": [],
+  "task": null,
+  "taskEditQuery": {
+    "searchCriteria": {
+      "title": "Practice english",
+      "tasklistId": null,
+      "dueDate": null
+    },
+    "updates": {
+      "title": "Practice english daily",
+      "description": "Speaking 5min Writing 5min Listening 30min",
+      "due_date": "2025-11-21"
+    }
+  },
+  "response": "Voy a editar la tarea 'Practice english' con el nuevo título 'Practice english daily', agregar la descripción 'Speaking 5min Writing 5min Listening 30min', y cambiar la fecha al viernes 21 de noviembre. ¿Confirmás?"
+}
+
+Usuario: "Agrega descripción 'Comprar en el supermercado' a la tarea Comprar leche"
+{
+  "intent": "update_task",
+  "needs_confirmation": true,
+  "missing_fields": [],
+  "task": null,
+  "taskEditQuery": {
+    "searchCriteria": {
+      "title": "Comprar leche",
+      "tasklistId": null,
+      "dueDate": null
+    },
+    "updates": {
+      "title": null,
+      "description": "Comprar en el supermercado",
+      "due_date": null
+    }
+  },
+  "response": "Voy a agregar la descripción 'Comprar en el supermercado' a la tarea 'Comprar leche'. ¿Confirmás?"
 }
 `;
 
