@@ -16,10 +16,65 @@ export async function POST(request: NextRequest) {
       confirmEdit,
       confirmTask,
       confirmDeleteTaskBatch,
+      confirmEditTask,
     } = body
 
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Mensaje inválido" }, { status: 400 })
+    }
+
+    if (confirmEditTask) {
+      const session = await getServerSession(authOptions)
+
+      console.log("Chat - Confirming task edit:", JSON.stringify(confirmEditTask, null, 2))
+
+      if (!session || !session.accessToken) {
+        return NextResponse.json({
+          intent: "update_task",
+          needs_confirmation: false,
+          response:
+            "Para editar tareas necesito que conectes tu cuenta de Google. Por favor hacé clic en 'Conectar Google Calendar' en la parte superior.",
+        })
+      }
+
+      try {
+        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
+        const updateResponse = await fetch(`${baseUrl}/api/tasks/update`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Cookie: request.headers.get("cookie") || "",
+          },
+          body: JSON.stringify({
+            taskId: confirmEditTask.taskId,
+            tasklistId: confirmEditTask.tasklistId,
+            updates: confirmEditTask.updates,
+          }),
+        })
+
+        const updateResult = await updateResponse.json()
+
+        if (updateResult.success) {
+          return NextResponse.json({
+            intent: "update_task",
+            needs_confirmation: false,
+            response: `Listo! La tarea "${confirmEditTask.taskTitle}" fue actualizada exitosamente en tu Google Tasks.`,
+          })
+        } else {
+          return NextResponse.json({
+            intent: "update_task",
+            needs_confirmation: false,
+            response: `Hubo un problema actualizando la tarea: ${updateResult.error}`,
+          })
+        }
+      } catch (error) {
+        console.error("Error updating task:", error)
+        return NextResponse.json({
+          intent: "update_task",
+          needs_confirmation: false,
+          response: "Disculpá, hubo un error actualizando la tarea. Por favor intentá de nuevo.",
+        })
+      }
     }
 
     if (confirmTask) {
@@ -699,6 +754,56 @@ Recordá: Respondé SOLO con JSON válido, sin texto adicional antes o después.
         console.error("Error searching tasks for deletion:", error)
         return NextResponse.json({
           intent: "delete_task",
+          needs_confirmation: false,
+          response: "Disculpá, hubo un error buscando las tareas. Por favor intentá de nuevo.",
+        })
+      }
+    }
+
+    if (parsedResponse.intent === "update_task" && parsedResponse.taskEditQuery) {
+      const session = await getServerSession(authOptions)
+
+      if (!session || !session.accessToken) {
+        return NextResponse.json({
+          intent: "update_task",
+          needs_confirmation: false,
+          response:
+            "Para editar tareas necesito que conectes tu cuenta de Google. Por favor hacé clic en 'Conectar Google Calendar' en la parte superior.",
+        })
+      }
+
+      try {
+        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
+        const searchResponse = await fetch(`${baseUrl}/api/tasks/update`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Cookie: request.headers.get("cookie") || "",
+          },
+          body: JSON.stringify({ searchCriteria: parsedResponse.taskEditQuery.searchCriteria }),
+        })
+
+        const searchResult = await searchResponse.json()
+
+        if (searchResult.success && searchResult.tasks && searchResult.tasks.length > 0) {
+          return NextResponse.json({
+            intent: "update_task",
+            needs_confirmation: true,
+            response: parsedResponse.response,
+            matchingTasks: searchResult.tasks,
+            taskUpdates: parsedResponse.taskEditQuery.updates,
+          })
+        } else {
+          return NextResponse.json({
+            intent: "update_task",
+            needs_confirmation: false,
+            response: "No encontré ninguna tarea que coincida con tu búsqueda.",
+          })
+        }
+      } catch (error) {
+        console.error("Error searching tasks for editing:", error)
+        return NextResponse.json({
+          intent: "update_task",
           needs_confirmation: false,
           response: "Disculpá, hubo un error buscando las tareas. Por favor intentá de nuevo.",
         })
