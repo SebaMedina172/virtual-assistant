@@ -32,6 +32,7 @@ export function ChatInterface() {
   const [pendingDelete, setPendingDelete] = useState<any[]>([])
   const [pendingDeleteTasks, setPendingDeleteTasks] = useState<any[]>([])
   const [pendingEdit, setPendingEdit] = useState<any>(null)
+  const [pendingEditTask, setPendingEditTask] = useState<any>(null) // Add state for task editing
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -138,6 +139,12 @@ export function ChatInterface() {
         const matchingEvents = (data as any).matchingEvents
         const editUpdates = (data as any).editUpdates
         setPendingEdit({ events: matchingEvents, updates: editUpdates })
+      }
+
+      if (data.intent === "update_task" && (data as any).matchingTasks) {
+        const matchingTasks = (data as any).matchingTasks
+        const taskUpdates = (data as any).taskUpdates
+        setPendingEditTask({ tasks: matchingTasks, updates: taskUpdates })
       }
 
       if (data.needs_confirmation && data.task) {
@@ -549,6 +556,12 @@ export function ChatInterface() {
           setPendingEdit({ events: matchingEvents, updates: editUpdates })
         }
 
+        if (data.intent === "update_task" && (data as any).matchingTasks) {
+          const matchingTasks = (data as any).matchingTasks
+          const taskUpdates = (data as any).taskUpdates
+          setPendingEditTask({ tasks: matchingTasks, updates: taskUpdates })
+        }
+
         if (data.needs_confirmation && data.task) {
           setPendingTask(data.task)
         }
@@ -639,6 +652,74 @@ export function ChatInterface() {
       timestamp: new Date(),
     }
     setMessages((prev) => [...prev, cancelMessage])
+  }
+
+  const handleConfirmEditTask = async (taskId: string, taskTitle: string, tasklistId: string) => {
+    if (!pendingEditTask) return
+
+    setIsLoading(true)
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: "confirmar edición de tarea",
+          conversationHistory: messages.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+          confirmEditTask: {
+            taskId,
+            taskTitle,
+            tasklistId,
+            updates: pendingEditTask.updates,
+          },
+        }),
+      })
+
+      const data = await response.json()
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: data.response,
+          timestamp: new Date(),
+        },
+      ])
+
+      setPendingEditTask(null)
+    } catch (error) {
+      console.error("Error confirming task edit:", error)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: "Hubo un error al editar la tarea. Por favor intentá de nuevo.",
+          timestamp: new Date(),
+        },
+      ])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCancelEditTask = () => {
+    setPendingEditTask(null)
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: "Edición de tarea cancelada.",
+        timestamp: new Date(),
+      },
+    ])
   }
 
   return (
@@ -869,7 +950,61 @@ export function ChatInterface() {
                 ))}
               </div>
               <div className="flex justify-center">
-                <Button onClick={handleCancelEdit} variant="outline" size="sm" className="text-xs sm:text-sm bg-transparent">
+                <Button
+                  onClick={handleCancelEdit}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs sm:text-sm bg-transparent"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        {pendingEditTask && !isLoading && (
+          <div className="mb-3 sm:mb-4">
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 sm:p-4">
+              <h3 className="font-semibold text-primary mb-2 sm:mb-3 text-sm sm:text-base">
+                Seleccioná la tarea a editar ({pendingEditTask.tasks.length}):
+              </h3>
+              <div className="space-y-2 mb-3 sm:mb-4">
+                {pendingEditTask.tasks.map((task: any) => (
+                  <div
+                    key={task.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between bg-background rounded p-2 sm:p-3 gap-2"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm">{task.title}</div>
+                      {task.due_date && (
+                        <div className="text-xs text-muted-foreground">
+                          📅{" "}
+                          {new Date(task.due_date + "T12:00:00").toLocaleDateString("es-AR", {
+                            weekday: "long",
+                            day: "numeric",
+                            month: "long",
+                          })}
+                        </div>
+                      )}
+                      {task.description && <div className="text-xs text-muted-foreground mt-1">{task.description}</div>}
+                    </div>
+                    <Button
+                      onClick={() => handleConfirmEditTask(task.id, task.title, task.tasklistId)}
+                      size="sm"
+                      className="bg-primary hover:bg-primary/90 w-full sm:w-auto text-xs sm:text-sm"
+                    >
+                      Editar esta
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-center">
+                <Button
+                  onClick={handleCancelEditTask}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs sm:text-sm bg-transparent"
+                >
                   Cancelar
                 </Button>
               </div>
@@ -892,7 +1027,7 @@ export function ChatInterface() {
       {/* Input Area */}
       <div className="border-t bg-card px-3 sm:px-6 py-3 sm:py-4">
         <div className="flex gap-2 items-start">
-          <VoiceInput 
+          <VoiceInput
             onTranscriptChange={handleVoiceTranscript}
             onTranscriptSubmit={handleVoiceSubmit}
             disabled={isLoading || !session}
@@ -905,7 +1040,12 @@ export function ChatInterface() {
             disabled={isLoading}
             className="flex-1 text-sm"
           />
-          <Button onClick={handleSendMessage} disabled={!input.trim() || isLoading} size="icon" className="shrink-0 h-9 w-9 sm:h-10 sm:w-10">
+          <Button
+            onClick={handleSendMessage}
+            disabled={!input.trim() || isLoading}
+            size="icon"
+            className="shrink-0 h-9 w-9 sm:h-10 sm:w-10"
+          >
             <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Button>
         </div>
