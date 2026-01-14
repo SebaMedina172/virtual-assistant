@@ -12,16 +12,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    console.log("Calendar update - Request body:", JSON.stringify(body, null, 2))
 
     const { eventId, updates, searchCriteria } = body
 
     if (searchCriteria) {
-      console.log("Calendar update - Searching for events:", JSON.stringify(searchCriteria, null, 2))
 
       const result = await searchEventsForEditing(session.accessToken, searchCriteria)
-
-      console.log("Calendar update - Search results:", JSON.stringify(result, null, 2))
 
       return NextResponse.json(result)
     }
@@ -30,12 +26,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Se requiere eventId y updates" }, { status: 400 })
     }
 
-    console.log("Calendar update - Updating event:", eventId)
-    console.log("Calendar update - Updates:", JSON.stringify(updates, null, 2))
-
     const result = await updateCalendarEvent(session.accessToken, eventId, updates)
-
-    console.log("Calendar update - Result:", JSON.stringify(result, null, 2))
 
     return NextResponse.json({
       success: true,

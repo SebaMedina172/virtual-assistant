@@ -14,14 +14,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { tasklistName, maxResults, dueMin, dueMax } = body
 
-    console.log("Tasks list - Request body:", JSON.stringify(body, null, 2))
-    console.log("Tasks list - Session has access token:", !!session.accessToken)
-
     // Resolve tasklist name to ID if provided
     let tasklistId = "@default"
     if (tasklistName) {
       tasklistId = await resolveTasklistId(session.accessToken, tasklistName)
-      console.log(`Tasks list - Resolved tasklist "${tasklistName}" to ID: ${tasklistId}`)
     }
 
     const result = await listTasks(session.accessToken, {
@@ -30,9 +26,6 @@ export async function POST(request: NextRequest) {
       dueMin,
       dueMax,
     })
-
-    console.log("Tasks list - Success:", result.tasks.length, "tasks found")
-    console.log("Tasks list - Tasks:", JSON.stringify(result.tasks, null, 2))
 
     return NextResponse.json(result)
   } catch (error: any) {

@@ -21,11 +21,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { taskId, tasklistId, updates, searchCriteria } = body
 
-    console.log("Tasks update - Request body:", JSON.stringify(body, null, 2))
-
     // If taskId is provided, update directly
     if (taskId) {
-      console.log("Tasks update - Updating task with ID:", taskId, "in tasklist:", tasklistId)
 
       const result = await updateTask(session.accessToken, taskId, updates, tasklistId)
 
@@ -39,7 +36,6 @@ export async function POST(request: NextRequest) {
 
     // If searchCriteria is provided, search for matching tasks
     if (searchCriteria) {
-      console.log("Tasks update - Searching tasks with criteria:", searchCriteria)
 
       const result = await searchTasksForEditing(session.accessToken, searchCriteria)
 

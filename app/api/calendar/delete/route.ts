@@ -14,12 +14,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { eventId, searchCriteria } = body
 
-    console.log("Calendar delete - Request body:", JSON.stringify(body, null, 2))
-
     // If eventId is provided, delete directly
     if (eventId) {
-      console.log("Calendar delete - Deleting event with ID:", eventId)
-
       const result = await deleteCalendarEvent(session.accessToken, eventId)
 
       return NextResponse.json({
@@ -30,8 +26,6 @@ export async function POST(request: NextRequest) {
 
     // If searchCriteria is provided, search for matching events
     if (searchCriteria) {
-      console.log("Calendar delete - Searching events with criteria:", searchCriteria)
-
       const result = await searchEventsForDeletion(session.accessToken, searchCriteria)
 
       return NextResponse.json({

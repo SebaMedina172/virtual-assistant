@@ -74,8 +74,6 @@ export function ChatInterface() {
 
       const data: AssistantResponse = await response.json()
 
-      console.log("Assistant response:", data)
-
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -491,7 +489,6 @@ export function ChatInterface() {
         return response.json() as Promise<AssistantResponse>
       })
       .then((data) => {
-        console.log("Assistant response from voice:", data)
 
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
@@ -730,8 +727,7 @@ export function ChatInterface() {
           {/* Título - dos líneas en móvil pero más compacto */}
           <div className="min-w-0 flex-1">
             <h1 className="text-sm leading-tight sm:text-2xl font-semibold">
-              <span className="block sm:inline">Asistente Virtual</span>
-              <span className="block sm:inline sm:ml-1.5">de Calendario</span>
+              <span className="block sm:inline">Smart Calendar Assistant</span>
             </h1>
           </div>
           

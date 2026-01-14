@@ -9,9 +9,6 @@ export async function POST(request: NextRequest) {
     // Verificar que el usuario esté autenticado
     const session = await getServerSession(authOptions)
 
-    console.log("Calendar create - Session exists:", !!session)
-    console.log("Calendar create - Access token exists:", !!session?.accessToken)
-
     if (session?.error === "RefreshAccessTokenError") {
       return NextResponse.json(
         { error: "Tu sesión expiró. Por favor desconectá y volvé a conectar tu cuenta de Google." },
@@ -24,12 +21,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    console.log("Calendar create - Received body:", JSON.stringify(body, null, 2))
 
     const { event } = body as { event: any }
 
     if (!event) {
-      console.log("Calendar create - No event in body")
       return NextResponse.json({ error: "No se proporcionó información del evento" }, { status: 400 })
     }
 
@@ -45,21 +40,12 @@ export async function POST(request: NextRequest) {
       conferenceData: event.conferenceData || undefined,
     }
 
-    console.log("Calendar create - Mapped event:", JSON.stringify(calendarEvent, null, 2))
-
     if (!calendarEvent.title || !calendarEvent.start_time || !calendarEvent.end_time) {
-      console.log("Calendar create - Missing required fields:", {
-        hasTitle: !!calendarEvent.title,
-        hasStart: !!calendarEvent.start_time,
-        hasEnd: !!calendarEvent.end_time,
-      })
       return NextResponse.json({ error: "Datos del evento incompletos" }, { status: 400 })
     }
 
     // Crear el evento en Google Calendar
     const result = await createCalendarEvent(session.accessToken, calendarEvent)
-
-    console.log("Calendar create - Success:", result)
 
     return NextResponse.json({
       success: true,

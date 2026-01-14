@@ -69,7 +69,6 @@ export const authOptions: NextAuthOptions = {
         return token
       }
 
-      console.log("[v0] Access token expired, refreshing...")
       return refreshAccessToken(token)
     },
     async session({ session, token }) {

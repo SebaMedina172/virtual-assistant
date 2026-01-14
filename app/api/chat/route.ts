@@ -26,8 +26,6 @@ export async function POST(request: NextRequest) {
     if (confirmEditTask) {
       const session = await getServerSession(authOptions)
 
-      console.log("Chat - Confirming task edit:", JSON.stringify(confirmEditTask, null, 2))
-
       if (!session || !session.accessToken) {
         return NextResponse.json({
           intent: "update_task",
@@ -80,8 +78,6 @@ export async function POST(request: NextRequest) {
     if (confirmTask) {
       const session = await getServerSession(authOptions)
 
-      console.log("Chat - Confirming task:", JSON.stringify(confirmTask, null, 2))
-
       if (!session || !session.accessToken) {
         return NextResponse.json({
           intent: "create_task",
@@ -103,10 +99,7 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({ task: confirmTask }),
         })
 
-        console.log("Chat - Tasks API response status:", createResponse.status)
-
         const createResult = await createResponse.json()
-        console.log("Chat - Tasks API response:", createResult)
 
         if (createResult.success) {
           return NextResponse.json({
@@ -137,8 +130,6 @@ export async function POST(request: NextRequest) {
 
     if (confirmDeleteTaskBatch && Array.isArray(confirmDeleteTaskBatch) && confirmDeleteTaskBatch.length > 0) {
       const session = await getServerSession(authOptions)
-
-      console.log("Chat - Confirming batch task delete:", JSON.stringify(confirmDeleteTaskBatch, null, 2))
 
       if (!session || !session.accessToken) {
         return NextResponse.json({
@@ -193,8 +184,6 @@ export async function POST(request: NextRequest) {
     if (confirmDeleteBatch && Array.isArray(confirmDeleteBatch) && confirmDeleteBatch.length > 0) {
       const session = await getServerSession(authOptions)
 
-      console.log("Chat - Confirming batch delete:", JSON.stringify(confirmDeleteBatch, null, 2))
-
       if (!session || !session.accessToken) {
         return NextResponse.json({
           intent: "delete_event",
@@ -248,8 +237,6 @@ export async function POST(request: NextRequest) {
     if (confirmDelete) {
       const session = await getServerSession(authOptions)
 
-      console.log("Chat - Confirming delete:", JSON.stringify(confirmDelete, null, 2))
-
       if (!session || !session.accessToken) {
         return NextResponse.json({
           intent: "delete_event",
@@ -298,9 +285,6 @@ export async function POST(request: NextRequest) {
     if (confirmEvent) {
       const session = await getServerSession(authOptions)
 
-      console.log("Chat - Confirming event:", JSON.stringify(confirmEvent, null, 2))
-      console.log("Chat - Session exists:", !!session)
-
       if (!session || !session.accessToken) {
         return NextResponse.json({
           intent: "create_event",
@@ -324,10 +308,7 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({ event: confirmEvent }),
         })
 
-        console.log("Chat - Calendar API response status:", createResponse.status)
-
         const createResult = await createResponse.json()
-        console.log("Chat - Calendar API response:", createResult)
 
         if (createResult.success) {
           return NextResponse.json({
@@ -361,8 +342,6 @@ export async function POST(request: NextRequest) {
 
     if (confirmEdit) {
       const session = await getServerSession(authOptions)
-
-      console.log("Chat - Confirming edit:", JSON.stringify(confirmEdit, null, 2))
 
       if (!session || !session.accessToken) {
         return NextResponse.json({
@@ -434,14 +413,10 @@ ${context ? `Contexto de la conversación anterior:\n${context}\n\n` : ""}Usuari
 
 Recordá: Respondé SOLO con JSON válido, sin texto adicional antes o después.`
 
-    console.log("Sending prompt to Gemini")
-
     // Llamar a Gemini
     const result = await geminiModel.generateContent(fullPrompt)
     const response = result.response
     const text = response.text()
-
-    console.log("Gemini raw response:", text)
 
     // Parsear la respuesta JSON
     let parsedResponse
@@ -465,8 +440,6 @@ Recordá: Respondé SOLO con JSON válido, sin texto adicional antes o después.
         { status: 200 },
       )
     }
-
-    console.log("Parsed response:", parsedResponse)
 
     if (parsedResponse.intent === "delete_event" && parsedResponse.deleteQuery) {
       const session = await getServerSession(authOptions)
@@ -582,8 +555,6 @@ Recordá: Respondé SOLO con JSON válido, sin texto adicional antes o después.
     if (parsedResponse.intent === "list_events" && parsedResponse.query) {
       const session = await getServerSession(authOptions)
 
-      console.log("Chat - Listing events:", JSON.stringify(parsedResponse.query, null, 2))
-
       if (!session || !session.accessToken) {
         return NextResponse.json({
           intent: "list_events",
@@ -636,8 +607,6 @@ Recordá: Respondé SOLO con JSON válido, sin texto adicional antes o después.
 
     if (parsedResponse.intent === "list_tasks" && parsedResponse.query) {
       const session = await getServerSession(authOptions)
-
-      console.log("Chat - Listing tasks:", JSON.stringify(parsedResponse.query, null, 2))
 
       if (!session || !session.accessToken) {
         return NextResponse.json({

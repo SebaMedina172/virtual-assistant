@@ -14,17 +14,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { startDate, endDate, maxResults } = body
 
-    console.log("Calendar list - Request body:", JSON.stringify(body, null, 2))
-    console.log("Calendar list - Session has access token:", !!session.accessToken)
-
     const result = await listCalendarEvents(session.accessToken, {
       startDate,
       endDate,
       maxResults,
     })
-
-    console.log("Calendar list - Success:", result.events.length, "events found")
-    console.log("Calendar list - Events:", JSON.stringify(result.events, null, 2))
 
     return NextResponse.json(result)
   } catch (error: any) {

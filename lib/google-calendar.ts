@@ -90,16 +90,12 @@ export async function createCalendarEvent(accessToken: string, event: CalendarEv
       }
     }
 
-    console.log("Creating event with data:", JSON.stringify(googleEvent, null, 2))
-
     // Crear el evento en Google Calendar
     const response = await calendar.events.insert({
       calendarId: "primary",
       requestBody: googleEvent,
       conferenceDataVersion: event.conferenceData?.createMeetLink ? 1 : 0,
     })
-
-    console.log("Event created successfully:", response.data.id)
 
     return {
       success: true,
@@ -155,9 +151,6 @@ export async function listCalendarEvents(
       timeMax = endOfDay.toISOString()
     }
 
-    console.log("Listing events - timeMin:", timeMin, "timeMax:", timeMax)
-    console.log("Listing events - maxResults:", options.maxResults || 50)
-
     const response = await calendar.events.list({
       calendarId: "primary",
       timeMin,
@@ -168,20 +161,6 @@ export async function listCalendarEvents(
     })
 
     const events = response.data.items || []
-
-    console.log("Found", events.length, "events")
-    console.log(
-      "Events:",
-      JSON.stringify(
-        events.map((e) => ({
-          id: e.id,
-          summary: e.summary,
-          start: e.start?.dateTime || e.start?.date,
-        })),
-        null,
-        2,
-      ),
-    )
 
     return {
       success: true,
@@ -215,14 +194,10 @@ export async function deleteCalendarEvent(accessToken: string, eventId: string) 
 
     const calendar = google.calendar({ version: "v3", auth: oauth2Client })
 
-    console.log("Deleting event with ID:", eventId)
-
     await calendar.events.delete({
       calendarId: "primary",
       eventId: eventId,
     })
-
-    console.log("Event deleted successfully")
 
     return {
       success: true,
@@ -269,8 +244,6 @@ export async function searchEventsForDeletion(
       timeMax = futureDate.toISOString()
     }
 
-    console.log("Searching events for deletion - timeMin:", timeMin, "timeMax:", timeMax, "title:", criteria.title)
-
     const response = await calendar.events.list({
       calendarId: "primary",
       timeMin,
@@ -282,8 +255,6 @@ export async function searchEventsForDeletion(
     })
 
     const events = response.data.items || []
-
-    console.log("Found", events.length, "matching events for deletion")
 
     return {
       success: true,
@@ -312,14 +283,10 @@ export async function updateCalendarEvent(accessToken: string, eventId: string, 
 
     const calendar = google.calendar({ version: "v3", auth: oauth2Client })
 
-    console.log("Fetching existing event:", eventId)
-
     const existingEvent = await calendar.events.get({
       calendarId: "primary",
       eventId: eventId,
     })
-
-    console.log("Existing event:", JSON.stringify(existingEvent.data, null, 2))
 
     const googleEvent: any = {
       summary: updates.title !== undefined ? updates.title : existingEvent.data.summary,
@@ -379,16 +346,12 @@ export async function updateCalendarEvent(accessToken: string, eventId: string, 
       googleEvent.conferenceData = existingEvent.data.conferenceData
     }
 
-    console.log("Updating event with data:", JSON.stringify(googleEvent, null, 2))
-
     const response = await calendar.events.update({
       calendarId: "primary",
       eventId: eventId,
       requestBody: googleEvent,
       conferenceDataVersion: updates.conferenceData?.createMeetLink ? 1 : 0,
     })
-
-    console.log("Event updated successfully:", response.data.id)
 
     return {
       success: true,
@@ -438,8 +401,6 @@ export async function searchEventsForEditing(
       timeMax = futureDate.toISOString()
     }
 
-    console.log("Searching events for editing - timeMin:", timeMin, "timeMax:", timeMax, "title:", criteria.title)
-
     const response = await calendar.events.list({
       calendarId: "primary",
       timeMin,
@@ -451,8 +412,6 @@ export async function searchEventsForEditing(
     })
 
     const events = response.data.items || []
-
-    console.log("Found", events.length, "matching events for editing")
 
     return {
       success: true,

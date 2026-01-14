@@ -10,7 +10,7 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Asistente Virtual de Calendario",
+  title: "Smart Calendar Assistant",
   description: "Gestioná tus eventos de Google Calendar con lenguaje natural",
   generator: "v0.app",
 }

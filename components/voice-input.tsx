@@ -35,7 +35,6 @@ export function VoiceInput({ onTranscriptChange, onTranscriptSubmit, disabled }:
     recognition.maxAlternatives = 1
 
     recognition.onstart = () => {
-      //console.log('Speech recognition started')
       setIsListening(true)
       clearSilenceTimeout()
     }
@@ -72,7 +71,6 @@ export function VoiceInput({ onTranscriptChange, onTranscriptSubmit, disabled }:
         silenceTimeoutRef.current = setTimeout(() => {
           const finalText = accumulatedTranscriptRef.current
           if (finalText && !isUserAbortingRef.current) {
-            //console.log('Silence detected, submitting:', finalText)
             handleStop()
             onTranscriptSubmit(finalText)
           }
@@ -84,16 +82,13 @@ export function VoiceInput({ onTranscriptChange, onTranscriptSubmit, disabled }:
       //console.error('Speech recognition error:', event.error)
 
       if (event.error === 'network') {
-        //console.log('Network error, stopping')
         handleStop()
       }
-      // Ignore: no-speech, audio-capture, aborted (these are transient)
+      // Ignore: no-speech, audio-capture, aborted
     }
 
     recognition.onend = () => {
-      //console.log('Speech recognition ended')
       setIsListening(false)
-      
       // This prevents the infinite abort/restart loop
     }
 
@@ -121,12 +116,10 @@ export function VoiceInput({ onTranscriptChange, onTranscriptSubmit, disabled }:
 
   const handleStart = () => {
     if (!recognitionRef.current) {
-      //console.log('Recognition not initialized')
       return
     }
 
     if (isListening) {
-      //console.log('Already listening')
       return
     }
 

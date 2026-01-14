@@ -14,11 +14,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { taskId, taskListId, searchCriteria } = body
 
-    console.log("Tasks delete - Request body:", JSON.stringify(body, null, 2))
-
     // If taskId and taskListId are provided, delete directly
     if (taskId && taskListId) {
-      console.log("Tasks delete - Deleting task with ID:", taskId, "from list:", taskListId)
 
       const result = await deleteTask(session.accessToken, taskId, taskListId)
 
@@ -30,7 +27,6 @@ export async function POST(request: NextRequest) {
 
     // If searchCriteria is provided, search for matching tasks
     if (searchCriteria) {
-      console.log("Tasks delete - Searching tasks with criteria:", searchCriteria)
 
       const result = await searchTasksForDeletion(session.accessToken, searchCriteria)
 

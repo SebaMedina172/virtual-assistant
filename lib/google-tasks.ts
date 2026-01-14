@@ -23,20 +23,14 @@ export async function resolveTasklistId(accessToken: string, tasklistName: strin
     })
 
     const tasklists = response.data.items || []
-    console.log(
-      "Available tasklists:",
-      tasklists.map((t) => ({ id: t.id, title: t.title })),
-    )
 
     // Find tasklist by name (case-insensitive)
     const matchedTasklist = tasklists.find((tl) => tl.title?.toLowerCase() === tasklistName.toLowerCase())
 
     if (matchedTasklist && matchedTasklist.id) {
-      console.log(`Resolved tasklist "${tasklistName}" to ID: ${matchedTasklist.id}`)
       return matchedTasklist.id
     }
 
-    console.log(`Tasklist "${tasklistName}" not found, using @default`)
     return "@default"
   } catch (error) {
     console.error("Error resolving tasklist:", error)
@@ -61,8 +55,6 @@ export async function createTask(accessToken: string, task: Task, parentTaskId?:
       tasklistId = await resolveTasklistId(accessToken, task.tasklist_id)
     }
 
-    console.log("Creating task in tasklist:", tasklistId)
-
     const googleTask: any = {
       title: task.title,
     }
@@ -76,15 +68,11 @@ export async function createTask(accessToken: string, task: Task, parentTaskId?:
       googleTask.due = dueDate.toISOString()
     }
 
-    console.log("Creating task with data:", JSON.stringify(googleTask, null, 2))
-
     const response = await tasks.tasks.insert({
       tasklist: tasklistId,
       requestBody: googleTask,
       parent: parentTaskId,
     })
-
-    console.log("Task created successfully:", response.data.id)
 
     const createdTaskId = response.data.id
 
@@ -93,7 +81,6 @@ export async function createTask(accessToken: string, task: Task, parentTaskId?:
     }
 
     if (task.subtasks && Array.isArray(task.subtasks) && task.subtasks.length > 0) {
-      console.log(`Creating ${task.subtasks.length} subtasks for parent task ${createdTaskId}`)
 
       for (const subtask of task.subtasks) {
         try {
@@ -142,13 +129,9 @@ export async function listTasks(
       showHidden: false,
     }
 
-    console.log("Listing tasks with params:", JSON.stringify(listParams, null, 2))
-
     const response = await tasks.tasks.list(listParams)
 
     let tasksList = response.data.items || []
-
-    console.log("Found", tasksList.length, "tasks in tasklist:", tasklistId)
 
     if (options.dueMin || options.dueMax) {
       tasksList = tasksList.filter((task) => {
@@ -164,7 +147,6 @@ export async function listTasks(
         return true
       })
 
-      console.log("After date filtering:", tasksList.length, "tasks remain")
     }
 
     return {
@@ -197,14 +179,10 @@ export async function deleteTask(accessToken: string, taskId: string, tasklistId
 
     const tlistId = tasklistId || "@default"
 
-    console.log("Deleting task with ID:", taskId, "from tasklist:", tlistId)
-
     await tasks.tasks.delete({
       tasklist: tlistId,
       task: taskId,
     })
-
-    console.log("Task deleted successfully")
 
     return {
       success: true,
@@ -227,14 +205,10 @@ export async function updateTask(accessToken: string, taskId: string, updates: P
 
     const tlistId = tasklistId || "@default"
 
-    console.log("Fetching existing task:", taskId, "from tasklist:", tlistId)
-
     const existingTask = await tasks.tasks.get({
       tasklist: tlistId,
       task: taskId,
     })
-
-    console.log("Existing task:", JSON.stringify(existingTask.data, null, 2))
 
     const googleTask: any = {
       id: taskId,
@@ -256,15 +230,11 @@ export async function updateTask(accessToken: string, taskId: string, updates: P
       googleTask.due = existingTask.data.due
     }
 
-    console.log("Updating task with data:", JSON.stringify(googleTask, null, 2))
-
     const response = await tasks.tasks.update({
       tasklist: tlistId,
       task: taskId,
       requestBody: googleTask,
     })
-
-    console.log("Task updated successfully:", response.data.id)
 
     return {
       success: true,
@@ -296,8 +266,6 @@ export async function searchTasksForDeletion(
 
     const tasklistId = criteria.tasklistId || "@default"
 
-    console.log("Searching tasks for deletion with criteria:", JSON.stringify(criteria, null, 2))
-
     const response = await tasks.tasks.list({
       tasklist: tasklistId,
       maxResults: 100,
@@ -321,8 +289,6 @@ export async function searchTasksForDeletion(
         return taskDueDate === criteria.dueDate
       })
     }
-
-    console.log("Found", tasksList.length, "matching tasks for deletion")
 
     return {
       success: true,
@@ -360,8 +326,6 @@ export async function searchTasksForEditing(
 
     const tasklistId = criteria.tasklistId || "@default"
 
-    console.log("Searching tasks for editing with criteria:", JSON.stringify(criteria, null, 2))
-
     const response = await tasks.tasks.list({
       tasklist: tasklistId,
       maxResults: 100,
@@ -385,8 +349,6 @@ export async function searchTasksForEditing(
         return taskDueDate === criteria.dueDate
       })
     }
-
-    console.log("Found", tasksList.length, "matching tasks for editing")
 
     return {
       success: true,
