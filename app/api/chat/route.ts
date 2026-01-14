@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { geminiModel } from "@/lib/gemini"
+import { groqModel } from "@/lib/groq"
 import { SYSTEM_PROMPT, buildConversationContext } from "@/lib/prompts"
 import { createCalendarEvent, deleteCalendarEvent, updateCalendarEvent } from "@/lib/google-calendar"
 import { createTask, deleteTask, updateTask } from "@/lib/google-tasks"
@@ -321,8 +321,8 @@ ${context ? `Contexto de la conversación anterior:\n${context}\n\n` : ""}Usuari
 
 Recordá: Respondé SOLO con JSON válido, sin texto adicional antes o después.`
 
-    // Llamar a Gemini
-    const result = await geminiModel.generateContent(fullPrompt)
+    // Llamar a Groq
+    const result = await groqModel.generateContent(fullPrompt)
     const response = result.response
     const text = response.text()
 
@@ -336,7 +336,7 @@ Recordá: Respondé SOLO con JSON válido, sin texto adicional antes o después.
         .trim()
       parsedResponse = JSON.parse(cleanedText)
     } catch (parseError) {
-      console.error("Error parsing Gemini response:", parseError)
+      console.error("Error parsing Groq response:", parseError)
       return NextResponse.json(
         {
           intent: "general",
