@@ -7,7 +7,7 @@
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Google AI](https://img.shields.io/badge/Gemini_AI-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
+[![Groq AI](https://img.shields.io/badge/Groq_AI-FF5400?style=for-the-badge&logo=groq&logoColor=white)](https://groq.com/)
 
 [Demo](#-demo) • [Funcionalidades](#-funcionalidades) • [Características Técnicas](#-características-técnicas) • [Tecnologías](#-stack-tecnológico) • [Instalación](#-instalación) • [Arquitectura](#-arquitectura)
 
@@ -23,7 +23,7 @@
 > *"Mostrame mis tareas pendientes para esta semana"*  
 > *"Cambiá la fecha de la tarea Estudiar para el viernes"*
 
-La aplicación utiliza **Google Gemini AI** para procesar y entender las solicitudes, identificando automáticamente si querés crear, editar, eliminar o listar eventos y tareas.
+La aplicación utiliza **Groq AI** para procesar y entender las solicitudes, identificando automáticamente si querés crear, editar, eliminar o listar eventos y tareas.
 
 ---
 
@@ -50,7 +50,7 @@ La aplicación utiliza **Google Gemini AI** para procesar y entender las solicit
 ## 🎯 Características Técnicas
 
 - **OAuth 2.0 con refresh tokens** - Manejo automático de expiración de sesión
-- **Procesamiento de lenguaje natural** - Gemini AI para detección de intenciones y extracción de entidades
+- **Procesamiento de lenguaje natural** - Groq AI para detección de intenciones y extracción de entidades
 - **Web Speech API** - Reconocimiento de voz continuo con detección inteligente de silencio
 - **Server Actions de Next.js 15** - Arquitectura optimizada con App Router
 - **Manejo de estados complejos** - Confirmaciones, operaciones batch, y flujos conversacionales
@@ -69,7 +69,7 @@ La aplicación utiliza **Google Gemini AI** para procesar y entender las solicit
 - **Lucide Icons** - Iconografía
 
 ### Backend & APIs
-- **Google Gemini AI** - Procesamiento de lenguaje natural
+- **Groq AI** - Procesamiento de lenguaje natural
 - **Google Calendar API** - Gestión de eventos
 - **Google Tasks API** - Gestión de tareas
 - **NextAuth.js** - Autenticación OAuth 2.0
@@ -107,7 +107,7 @@ La aplicación utiliza **Google Gemini AI** para procesar y entender las solicit
 │   ├── voice-input.tsx    # Entrada por voz
 │   └── ui/                # Componentes shadcn
 ├── lib/
-│   ├── gemini.ts          # Cliente Google Gemini AI
+│   ├── groq.ts            # Cliente Groq AI
 │   ├── google-calendar.ts # Funciones Calendar API
 │   ├── google-tasks.ts    # Funciones Tasks API
 │   └── prompts.ts         # System prompt del AI
@@ -119,7 +119,7 @@ La aplicación utiliza **Google Gemini AI** para procesar y entender las solicit
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Usuario   │────▶│  Chat API   │────▶│  Gemini AI  │
+│   Usuario   │────▶│  Chat API   │────▶│  Groq AI    │
 │  (mensaje)  │     │             │     │  (análisis) │
 └─────────────┘     └─────────────┘     └─────────────┘
                            │                    │
@@ -133,7 +133,7 @@ La aplicación utiliza **Google Gemini AI** para procesar y entender las solicit
 
 1. El usuario escribe un mensaje en lenguaje natural
 2. El mensaje se envía al endpoint `/api/chat`
-3. Gemini AI analiza el mensaje y detecta la intención
+3. Groq AI analiza el mensaje y detecta la intención
 4. Se ejecuta la acción correspondiente en Google Calendar o Tasks
 5. El resultado se muestra al usuario en la interfaz
 
@@ -167,9 +167,9 @@ npm install
 4. Crear credenciales OAuth 2.0 (Web Application)
 5. Agregar `http://localhost:3000/api/auth/callback/google` como URI de redirección
 
-### 4. Configurar Gemini AI
+### 4. Configurar Groq AI
 
-1. Obtener una API key en [Google AI Studio](https://aistudio.google.com/apikey)
+1. Obtener una API key en [Groq Console](https://console.groq.com/)
 
 ### 5. Variables de entorno
 
@@ -184,8 +184,8 @@ NEXTAUTH_SECRET=tu_secret_aleatorio_aqui
 GOOGLE_CLIENT_ID=tu_client_id
 GOOGLE_CLIENT_SECRET=tu_client_secret
 
-# Google Gemini AI
-GEMINI_API_KEY=tu_gemini_api_key
+# Groq AI
+GROQ_API_KEY=tu_groq_api_key
 ```
 
 ### 6. Ejecutar en desarrollo
