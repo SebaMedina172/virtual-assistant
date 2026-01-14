@@ -9,7 +9,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![Google AI](https://img.shields.io/badge/Gemini_AI-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
 
-[Demo](#demo) • [Funcionalidades](#-funcionalidades) • [Tecnologías](#-stack-tecnológico) • [Instalación](#-instalación) • [Arquitectura](#-arquitectura)
+[Demo](#-demo) • [Funcionalidades](#-funcionalidades) • [Características Técnicas](#-características-técnicas) • [Tecnologías](#-stack-tecnológico) • [Instalación](#-instalación) • [Arquitectura](#-arquitectura)
 
 </div>
 
@@ -45,11 +45,17 @@ La aplicación utiliza **Google Gemini AI** para procesar y entender las solicit
 | **Editar** | Modifica título, descripción o fecha | *"Cambiá el título de Estudiar a Estudiar para examen"* |
 | **Eliminar** | Elimina tareas | *"Eliminá la tarea Comprar leche"* |
 
-### Características Adicionales
-- **Entrada por voz** - Dictá tus comandos usando el micrófono
-- **Tema claro/oscuro** - Interfaz adaptable a tus preferencias
-- **Diseño responsive** - Funciona en desktop y móvil
-- **Confirmaciones** - El asistente siempre pide confirmación antes de ejecutar cambios
+---
+
+## 🎯 Características Técnicas
+
+- **OAuth 2.0 con refresh tokens** - Manejo automático de expiración de sesión
+- **Procesamiento de lenguaje natural** - Gemini AI para detección de intenciones y extracción de entidades
+- **Web Speech API** - Reconocimiento de voz continuo con detección inteligente de silencio
+- **Server Actions de Next.js 15** - Arquitectura optimizada con App Router
+- **Manejo de estados complejos** - Confirmaciones, operaciones batch, y flujos conversacionales
+- **Diseño mobile-first** - Interfaz 100% responsive con soporte para gestos táctiles
+- **Manejo robusto de errores** - Validaciones en cliente y servidor + retry logic
 
 ---
 
@@ -193,7 +199,19 @@ Abrir [http://localhost:3000](http://localhost:3000)
 
 ## 📸 Demo
 
-[Live Demo](https://sm-assistant.vercel.app/)
+🔗 **[Ver Demo en Vivo](https://sm-assistant.vercel.app/)**
+
+### Ejemplos de uso:
+
+**Eventos:**
+- 📅 "Agendame una reunión con el equipo mañana a las 3pm con link de Meet"
+- 🎨 "Creá un recordatorio el viernes a las 10am en color rojo"
+- 🔄 "Cambiá mi dentista del martes a las 4pm"
+
+**Tareas:**
+- ✅ "Agregá una tarea: Comprar verduras para el 25 con subtareas lechuga, tomate y zanahoria"
+- 📋 "Mostrame las tareas pendientes de esta semana"
+- 🗑️ "Eliminá las tareas Prueba 1, Prueba 2 y Prueba 3"
 
 ---
 
