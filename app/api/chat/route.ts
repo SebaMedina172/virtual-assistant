@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { geminiModel } from "@/lib/gemini"
 import { SYSTEM_PROMPT, buildConversationContext } from "@/lib/prompts"
+import { createCalendarEvent, deleteCalendarEvent, updateCalendarEvent } from "@/lib/google-calendar"
+import { createTask, deleteTask, updateTask } from "@/lib/google-tasks"
+import type { CalendarEvent, Task } from "@/types"
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,41 +39,24 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
-        const updateResponse = await fetch(`${baseUrl}/api/tasks/update`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Cookie: request.headers.get("cookie") || "",
-          },
-          body: JSON.stringify({
-            taskId: confirmEditTask.taskId,
-            tasklistId: confirmEditTask.tasklistId,
-            updates: confirmEditTask.updates,
-          }),
+        await updateTask(
+          session.accessToken,
+          confirmEditTask.taskId,
+          confirmEditTask.updates,
+          confirmEditTask.tasklistId,
+        )
+
+        return NextResponse.json({
+          intent: "update_task",
+          needs_confirmation: false,
+          response: `Listo! La tarea "${confirmEditTask.taskTitle}" fue actualizada exitosamente en tu Google Tasks.`,
         })
-
-        const updateResult = await updateResponse.json()
-
-        if (updateResult.success) {
-          return NextResponse.json({
-            intent: "update_task",
-            needs_confirmation: false,
-            response: `Listo! La tarea "${confirmEditTask.taskTitle}" fue actualizada exitosamente en tu Google Tasks.`,
-          })
-        } else {
-          return NextResponse.json({
-            intent: "update_task",
-            needs_confirmation: false,
-            response: `Hubo un problema actualizando la tarea: ${updateResult.error}`,
-          })
-        }
       } catch (error) {
         console.error("Error updating task:", error)
         return NextResponse.json({
           intent: "update_task",
           needs_confirmation: false,
-          response: "Disculpá, hubo un error actualizando la tarea. Por favor intentá de nuevo.",
+          response: `Hubo un problema actualizando la tarea: ${error instanceof Error ? error.message : "Error desconocido"}`,
         })
       }
     }
@@ -89,41 +75,22 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
-        const createResponse = await fetch(`${baseUrl}/api/tasks/create`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Cookie: request.headers.get("cookie") || "",
-          },
-          body: JSON.stringify({ task: confirmTask }),
+        await createTask(session.accessToken, confirmTask as Task)
+
+        return NextResponse.json({
+          intent: "create_task",
+          needs_confirmation: false,
+          task: confirmTask,
+          response: `Perfecto! Tu tarea "${confirmTask.title}" fue creada exitosamente en tu Google Tasks.`,
+          taskCreated: true,
         })
-
-        const createResult = await createResponse.json()
-
-        if (createResult.success) {
-          return NextResponse.json({
-            intent: "create_task",
-            needs_confirmation: false,
-            task: confirmTask,
-            response: `Perfecto! Tu tarea "${confirmTask.title}" fue creada exitosamente en tu Google Tasks.`,
-            taskCreated: true,
-          })
-        } else {
-          return NextResponse.json({
-            intent: "create_task",
-            needs_confirmation: false,
-            task: null,
-            response: `Hubo un problema creando la tarea: ${createResult.error}`,
-          })
-        }
       } catch (error) {
         console.error("Error creating task:", error)
         return NextResponse.json({
           intent: "create_task",
           needs_confirmation: false,
           task: null,
-          response: "Disculpá, hubo un error creando la tarea. Por favor intentá de nuevo.",
+          response: `Hubo un problema creando la tarea: ${error instanceof Error ? error.message : "Error desconocido"}`,
         })
       }
     }
@@ -141,16 +108,10 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
         const deletePromises = confirmDeleteTaskBatch.map((task: any) =>
-          fetch(`${baseUrl}/api/tasks/delete`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Cookie: request.headers.get("cookie") || "",
-            },
-            body: JSON.stringify({ taskId: task.id, taskListId: task.tasklistId }),
-          }).then((res) => res.json()),
+          deleteTask(session.accessToken!, task.id, task.tasklistId)
+            .then(() => ({ success: true }))
+            .catch(() => ({ success: false })),
         )
 
         const results = await Promise.all(deletePromises)
@@ -194,16 +155,10 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
         const deletePromises = confirmDeleteBatch.map((event) =>
-          fetch(`${baseUrl}/api/calendar/delete`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Cookie: request.headers.get("cookie") || "",
-            },
-            body: JSON.stringify({ eventId: event.id }),
-          }).then((res) => res.json()),
+          deleteCalendarEvent(session.accessToken!, event.id)
+            .then(() => ({ success: true }))
+            .catch(() => ({ success: false })),
         )
 
         const results = await Promise.all(deletePromises)
@@ -247,37 +202,19 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
-        const deleteResponse = await fetch(`${baseUrl}/api/calendar/delete`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Cookie: request.headers.get("cookie") || "",
-          },
-          body: JSON.stringify({ eventId: confirmDelete.id }),
+        await deleteCalendarEvent(session.accessToken, confirmDelete.id)
+
+        return NextResponse.json({
+          intent: "delete_event",
+          needs_confirmation: false,
+          response: `Listo! El evento "${confirmDelete.title}" fue eliminado exitosamente de tu Google Calendar.`,
         })
-
-        const deleteResult = await deleteResponse.json()
-
-        if (deleteResult.success) {
-          return NextResponse.json({
-            intent: "delete_event",
-            needs_confirmation: false,
-            response: `Listo! El evento "${confirmDelete.title}" fue eliminado exitosamente de tu Google Calendar.`,
-          })
-        } else {
-          return NextResponse.json({
-            intent: "delete_event",
-            needs_confirmation: false,
-            response: `Hubo un problema eliminando el evento: ${deleteResult.error}`,
-          })
-        }
       } catch (error) {
         console.error("Error deleting event:", error)
         return NextResponse.json({
           intent: "delete_event",
           needs_confirmation: false,
-          response: "Disculpá, hubo un error eliminando el evento. Por favor intentá de nuevo.",
+          response: `Hubo un problema eliminando el evento: ${error instanceof Error ? error.message : "Error desconocido"}`,
         })
       }
     }
@@ -296,38 +233,30 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      // Create the event in Google Calendar
       try {
-        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
-        const createResponse = await fetch(`${baseUrl}/api/calendar/create`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Cookie: request.headers.get("cookie") || "",
-          },
-          body: JSON.stringify({ event: confirmEvent }),
-        })
-
-        const createResult = await createResponse.json()
-
-        if (createResult.success) {
-          return NextResponse.json({
-            intent: "create_event",
-            needs_confirmation: false,
-            missing_fields: [],
-            event: confirmEvent,
-            response: `Perfecto! Tu evento "${confirmEvent.summary || confirmEvent.title}" fue creado exitosamente en tu Google Calendar.`,
-            eventCreated: true,
-          })
-        } else {
-          return NextResponse.json({
-            intent: "create_event",
-            needs_confirmation: false,
-            missing_fields: [],
-            event: null,
-            response: `Hubo un problema creando el evento: ${createResult.error}`,
-          })
+        const calendarEvent: CalendarEvent = {
+          title: confirmEvent.summary || confirmEvent.title,
+          description: confirmEvent.description || null,
+          start_time: confirmEvent.start || confirmEvent.start_time,
+          end_time: confirmEvent.end || confirmEvent.end_time,
+          attendees: confirmEvent.attendees || null,
+          color: confirmEvent.color || undefined,
+          reminders: confirmEvent.reminders || undefined,
+          recurrence: confirmEvent.recurrence || undefined,
+          conferenceData: confirmEvent.conferenceData || undefined,
         }
+
+        const result = await createCalendarEvent(session.accessToken, calendarEvent)
+
+        return NextResponse.json({
+          intent: "create_event",
+          needs_confirmation: false,
+          missing_fields: [],
+          event: confirmEvent,
+          response: `Perfecto! Tu evento "${confirmEvent.summary || confirmEvent.title}" fue creado exitosamente en tu Google Calendar.`,
+          eventCreated: true,
+          meetLink: result.meetLink,
+        })
       } catch (error) {
         console.error("Error creating event:", error)
         return NextResponse.json({
@@ -335,7 +264,7 @@ export async function POST(request: NextRequest) {
           needs_confirmation: false,
           missing_fields: [],
           event: null,
-          response: "Disculpá, hubo un error creando el evento. Por favor intentá de nuevo.",
+          response: `Hubo un problema creando el evento: ${error instanceof Error ? error.message : "Error desconocido"}`,
         })
       }
     }
@@ -353,40 +282,19 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
-        const updateResponse = await fetch(`${baseUrl}/api/calendar/update`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Cookie: request.headers.get("cookie") || "",
-          },
-          body: JSON.stringify({
-            eventId: confirmEdit.eventId,
-            updates: confirmEdit.updates,
-          }),
+        await updateCalendarEvent(session.accessToken, confirmEdit.eventId, confirmEdit.updates)
+
+        return NextResponse.json({
+          intent: "update_event",
+          needs_confirmation: false,
+          response: `Listo! El evento "${confirmEdit.eventTitle}" fue actualizado exitosamente en tu Google Calendar.`,
         })
-
-        const updateResult = await updateResponse.json()
-
-        if (updateResult.success) {
-          return NextResponse.json({
-            intent: "update_event",
-            needs_confirmation: false,
-            response: `Listo! El evento "${confirmEdit.eventTitle}" fue actualizado exitosamente en tu Google Calendar.`,
-          })
-        } else {
-          return NextResponse.json({
-            intent: "update_event",
-            needs_confirmation: false,
-            response: `Hubo un problema actualizando el evento: ${updateResult.error}`,
-          })
-        }
       } catch (error) {
         console.error("Error updating event:", error)
         return NextResponse.json({
           intent: "update_event",
           needs_confirmation: false,
-          response: "Disculpá, hubo un error actualizando el evento. Por favor intentá de nuevo.",
+          response: `Hubo un problema actualizando el evento: ${error instanceof Error ? error.message : "Error desconocido"}`,
         })
       }
     }
