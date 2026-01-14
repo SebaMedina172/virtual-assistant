@@ -34,6 +34,13 @@ function getColorId(color?: string): string | undefined {
   return COLOR_MAP[color.toLowerCase()]
 }
 
+function parseAsArgentinaTime(dateTimeStr: string): Date {
+  if (!dateTimeStr.includes("Z") && !dateTimeStr.includes("+") && !dateTimeStr.includes("-", 10)) {
+    return new Date(dateTimeStr + "-03:00")
+  }
+  return new Date(dateTimeStr)
+}
+
 export async function createCalendarEvent(accessToken: string, event: CalendarEvent) {
   try {
     // Crear cliente OAuth2 con el access token del usuario
@@ -46,9 +53,8 @@ export async function createCalendarEvent(accessToken: string, event: CalendarEv
     // Crear cliente de Google Calendar
     const calendar = google.calendar({ version: "v3", auth: oauth2Client })
 
-    // Preparar el evento para Google Calendar
-    const startDateTime = new Date(event.start_time)
-    const endDateTime = new Date(event.end_time)
+    const startDateTime = parseAsArgentinaTime(event.start_time)
+    const endDateTime = parseAsArgentinaTime(event.end_time)
 
     const googleEvent: any = {
       summary: event.title,
@@ -295,7 +301,7 @@ export async function updateCalendarEvent(accessToken: string, eventId: string, 
     }
 
     if (updates.start_time) {
-      const startDateTime = new Date(updates.start_time)
+      const startDateTime = parseAsArgentinaTime(updates.start_time)
       googleEvent.start = {
         dateTime: startDateTime.toISOString(),
         timeZone: "America/Argentina/Buenos_Aires",
@@ -305,7 +311,7 @@ export async function updateCalendarEvent(accessToken: string, eventId: string, 
     }
 
     if (updates.end_time) {
-      const endDateTime = new Date(updates.end_time)
+      const endDateTime = parseAsArgentinaTime(updates.end_time)
       googleEvent.end = {
         dateTime: endDateTime.toISOString(),
         timeZone: "America/Argentina/Buenos_Aires",

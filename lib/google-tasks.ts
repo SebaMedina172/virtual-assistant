@@ -1,6 +1,10 @@
 import { google } from "googleapis"
 import type { Task } from "@/types"
 
+function formatDueDateAsArgentina(dateStr: string): string {
+  return `${dateStr}T00:00:00-03:00`
+}
+
 export async function resolveTasklistId(accessToken: string, tasklistName: string | null): Promise<string> {
   if (!tasklistName) {
     return "@default"
@@ -64,8 +68,7 @@ export async function createTask(accessToken: string, task: Task, parentTaskId?:
     }
 
     if (task.due_date) {
-      const dueDate = new Date(task.due_date + "T00:00:00")
-      googleTask.due = dueDate.toISOString()
+      googleTask.due = formatDueDateAsArgentina(task.due_date)
     }
 
     const response = await tasks.tasks.insert({
@@ -223,8 +226,7 @@ export async function updateTask(accessToken: string, taskId: string, updates: P
 
     if (updates.due_date !== undefined) {
       if (updates.due_date) {
-        const dueDate = new Date(updates.due_date + "T00:00:00")
-        googleTask.due = dueDate.toISOString()
+        googleTask.due = formatDueDateAsArgentina(updates.due_date)
       }
     } else if (existingTask.data.due) {
       googleTask.due = existingTask.data.due
